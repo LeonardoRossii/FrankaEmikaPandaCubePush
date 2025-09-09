@@ -1,48 +1,86 @@
 import numpy as np
-import math
 
-def weighted_mean(elite_weights, elite_weights_scores):
-    elite_weights = np.array(elite_weights) 
-    elite_weights_scores = np.array(elite_weights_scores)
-    elite_weights_scores_normalized = elite_weights_scores / np.sum(elite_weights_scores)
-    best_weight_new = np.average(elite_weights, axis=0, weights=elite_weights_scores_normalized)
-    return best_weight_new
-
-def cem(agent, n_training_iterations=30, max_n_timesteps=250, gamma=0.99, pop_size=30, n_elite=4, sigma=0.05, alpha= 0.85, beta= 0.2):
+def cem(
+    agent,
+    n_training_iterations: int = 30,
+    max_n_timesteps: int = 0,
+    gamma: float = 0.99,
+    pop_size: int = 30,
+    elite_frac: float = 0.3,
+    top_frac: float = 0.3,
+    sigma: float = 0.15,
+    alpha: float = 0.85,
+    beta: float = 0.25,
+    softmax_temp: float = 1.0,
+    sigma_min: float = 1e-3,
+    pop_decay = 0.97,
+    pop_min= 12,
+):
     
-    mean_weight = np.zeros(agent.get_weights_dim())
+    weight_dim = agent.get_weights_dim()
+    mean_weight = 0 * np.random.randn(weight_dim)
     best_weight = mean_weight
 
-    for i_iteration in range(1, n_training_iterations+1):
-        
-        rewards = []
+    n_elite_init = max(int(pop_size * elite_frac), 2)
+    n_top = max(int(max(n_elite_init, 2) * top_frac), 1)
 
-        weights_pop = [mean_weight + (sigma*np.random.randn(agent.get_weights_dim())) for i in range(pop_size-1)]        
-        weights_pop.append(best_weight)
-        
-        for i in range(len(weights_pop)):
-            reward = agent.evaluate(weights_pop[i], max_n_timesteps, gamma)
-            rewards.append(reward)
-            print(f"return {i}: {reward}")
+    top_weights = [
+        mean_weight + sigma * np.random.randn(weight_dim)
+        for _ in range(n_top)
+    ]
 
-        elite_idxs = np.array(rewards).argsort()[-n_elite:]
-        elite_weights = [weights_pop[i] for i in elite_idxs]
-        elite_weights_scores = [np.array(rewards)[i] for i in elite_idxs]
-        best_weight = elite_weights[n_elite-1]
-        best_reward = elite_weights_scores[n_elite-1]
+    best_rewards = []
 
-        mean_weight_new = weighted_mean(elite_weights, elite_weights_scores)
-        mean_weight= alpha*mean_weight_new + (1-alpha)*mean_weight
-        sigma_new = np.array(elite_weights).std(axis=0)
-        sigma= beta*sigma_new + (1-beta)*sigma
+    for i_iteration in range(1, n_training_iterations + 1):
         
-        mean_reward = agent.evaluate(mean_weight,max_n_timesteps, gamma=1.0)
-        if mean_reward >= best_reward:
-            best_weight = mean_weight
-        
-        pop_size = max(8, pop_size-1)
-        n_elite  = max(2, math.ceil(pop_size/5))
+        print(f"- Episode: {i_iteration}")
+
+        n_elite = max(int(pop_size * elite_frac), 2)
+        weights_pop = [
+            mean_weight + sigma * np.random.randn(weight_dim)
+            for _ in range(pop_size - len(top_weights))
+        ]
+
+        for w in top_weights:
+            weights_pop.append(w)
+
+        returns = []
+
+        for i, weight in enumerate(weights_pop):
+            return_ = agent.evaluate(weight, max_n_timesteps, gamma)
+            returns.append(return_)
+            print(f"return {i}: {return_}")
+
+        returns = np.asarray(returns, dtype=float)
+        elite_idxs = np.argsort(returns)[-n_elite:]
+        print(elite_idxs)
+        elite_weights = np.array([weights_pop[i] for i in elite_idxs])
+        elite_scores = returns[elite_idxs]
+
+        shift = elite_scores.max()
+        logits = (elite_scores - shift) / max(1e-8, softmax_temp)
+        w = np.exp(logits)
+        w_sum = w.sum()
+        if not np.isfinite(w_sum) or w_sum <= 0:
+            w = np.ones_like(elite_scores) / len(elite_scores)
+        else:
+            w /= w_sum
+        weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
+
+        n_top_iter = min(n_top, n_elite)
+        top_weights = elite_weights[-n_top_iter:]
+        best_weight = elite_weights[-1]
+        best_reward = elite_scores[-1]
+
+        mean_weight = alpha * weighted_mean_score + (1 - alpha) * mean_weight
+        elite_std = np.std(elite_weights, axis=0)
+        sigma = beta * elite_std + (1 - beta) * sigma
+
+        sigma = np.maximum(sigma, sigma_min)
+        best_rewards.append(best_reward)
+    
+        pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
         if i_iteration == n_training_iterations:
             np.savetxt('policy.txt', best_weight)
-    return None
+    return best_rewards

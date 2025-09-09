@@ -85,7 +85,7 @@ class Push(SingleArmEnv):
     def _check_success(self):
         return bool(self.goal_pos_world()[0] - self.sim.data.body_xpos[self.cube_body_id][0] <= 0)
     
-    def _check_failure(self):
+    def termination_condition(self):
         return bool(np.linalg.norm(self.sim.data.site_xpos[self.robots[0].eef_site_id] - self.sim.data.body_xpos[self.cube_body_id]) >= 0.2)
     
     def check_contact_table(self):

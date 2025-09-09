@@ -6,7 +6,7 @@ from robosuite.environments import ALL_ENVIRONMENTS
 
 if "Push" not in ALL_ENVIRONMENTS: ALL_ENVIRONMENTS["Push"] = Push
 controller = suite.load_controller_config(default_controller="OSC_POSE")
-policy_params = "policy.txt"
+policy_params = "policy_.txt"
 
 env = suite.make(
     "Push",
