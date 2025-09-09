@@ -16,7 +16,7 @@ class Push(SingleArmEnv):
         env_configuration="default",
         controller_configs=None,
         gripper_types="default",
-        initialization_noise="default",
+        initialization_noise=None,
         table_full_size=(0.8, 0.15, 0.05),
         table_friction=(0.5, 5e-3, 1e-4),
         use_object_obs=True,
@@ -30,8 +30,8 @@ class Push(SingleArmEnv):
         render_collision_mesh=False,
         render_visual_mesh=True,
         render_gpu_device_id=-1,
-        control_freq=100,
-        horizon=1000,
+        control_freq=25,
+        horizon=250,
         ignore_done=False,
         hard_reset=True,
         camera_names="agentview",
@@ -59,7 +59,7 @@ class Push(SingleArmEnv):
             mount_types="default",
             gripper_types=gripper_types,
             initialization_noise=initialization_noise,
-            use_camera_obs=False,
+            use_camera_obs=use_camera_obs,
             has_renderer=has_renderer,
             has_offscreen_renderer=has_offscreen_renderer,
             render_camera=render_camera,
@@ -82,11 +82,11 @@ class Push(SingleArmEnv):
     def reward(env, action=None):
         return get_reward(env, action)
     
-    def dist_to_goal(self):
-        return self.goal_pos_world()[0] - self.sim.data.body_xpos[self.cube_body_id][0]
-
     def _check_success(self):
-        return bool(self.dist_to_goal() <= 0)
+        return bool(self.goal_pos_world()[0] - self.sim.data.body_xpos[self.cube_body_id][0] <= 0)
+    
+    def _check_failure(self):
+        return bool(np.linalg.norm(self.sim.data.site_xpos[self.robots[0].eef_site_id] - self.sim.data.body_xpos[self.cube_body_id]) >= 0.2)
     
     def check_contact_table(self):
         table_contact= False
@@ -108,7 +108,6 @@ class Push(SingleArmEnv):
             table_offset=self.table_offset,
         )
         mujoco_arena.set_origin([0, 0, 0])
-
         tex_attrib = {"type": "cube"}
         mat_attrib = {"texrepeat": "1 1", "specular": "0.4", "shininess": "0.1"}
         redwood = CustomMaterial(
@@ -125,7 +124,6 @@ class Push(SingleArmEnv):
             rgba=[1, 0, 0, 1],
             material=redwood,
         )
-
         if self.placement_initializer is not None:
             self.placement_initializer.reset()
             self.placement_initializer.add_objects(self.cube)
@@ -133,15 +131,14 @@ class Push(SingleArmEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube,
-                x_range=[-0.0, 0.0],
-                y_range=[-0.0, 0.0],
-                rotation=None,
+                x_range=[0.0, 0.0],
+                y_range=[0.0, 0.0],
+                rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
-
         self.model = ManipulationTask(
             mujoco_arena=mujoco_arena,
             mujoco_robots=[robot.robot_model for robot in self.robots],
@@ -170,14 +167,14 @@ class Push(SingleArmEnv):
             @sensor(modality=modality)
             def eef_to_cube_pos(obs_cache):
                 if f"{pf}eef_pos" in obs_cache and "cube_pos" in obs_cache:
-                    return obs_cache[f"{pf}eef_pos"] - obs_cache["cube_pos"]
-                return np.zeros(3)
+                    return np.linalg.norm(obs_cache[f"{pf}eef_pos"] - obs_cache["cube_pos"])
+                return 0
 
             @sensor(modality=modality)
             def cube_to_goal_pos(obs_cache):
                 if "cube_pos" in obs_cache and "goal_pos" in obs_cache:
-                    return obs_cache["goal_pos"] - obs_cache["cube_pos"]
-                return np.zeros(3)
+                    return np.linalg.norm(obs_cache["goal_pos"] - obs_cache["cube_pos"])
+                return 0
 
             sensors = [cube_pos, goal_pos, eef_to_cube_pos, cube_to_goal_pos]
             names = [s.__name__ for s in sensors]

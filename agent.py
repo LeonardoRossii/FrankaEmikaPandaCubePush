@@ -8,9 +8,9 @@ class Agent():
         self.output_size = output_size
         self.A = np.zeros((output_size, input_size))
         self.b = np.zeros(output_size)
-        
+
     def get_state(self,  obs):
-        return np.concatenate([obs["eef_to_cube_pos"], obs["cube_to_goal_pos"]])
+        return np.array([obs["eef_to_cube_pos"], obs["cube_to_goal_pos"]])
 
     def set_weights(self, weights):
         A_size = self.output_size * self.input_size
@@ -35,6 +35,6 @@ class Agent():
             obs, reward, done, _, = self.env.step(action)
             episode_return += reward * math.pow(gamma, t)
 
-            if done or self.env._check_success():
+            if done or self.env._check_success() or self.env.termination_condition():
                 break
         return episode_return
