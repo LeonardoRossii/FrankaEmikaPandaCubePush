@@ -10,7 +10,7 @@ class Agent():
         self.b = np.zeros(self.output_size)
 
     def get_state(self,  obs):
-        return np.array([obs["eef_to_cube_pos"], obs["cube_to_goal_pos"]])
+        return np.array([obs["eef_to_cube_dist"], obs["cube_to_goal_dist"]])
 
     def set_weights(self, weights):
         A_size = self.output_size * self.input_size

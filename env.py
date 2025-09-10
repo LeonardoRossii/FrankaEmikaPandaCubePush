@@ -184,18 +184,18 @@ class Push(SingleArmEnv):
                 return goal_pos
 
             @sensor(modality=modality)
-            def eef_to_cube_pos(obs_cache):
+            def eef_to_cube_dist(obs_cache):
                 if f"{pf}eef_pos" in obs_cache and "cube_pos" in obs_cache:
                     return np.linalg.norm(obs_cache[f"{pf}eef_pos"] - obs_cache["cube_pos"])
                 return 0
 
             @sensor(modality=modality)
-            def cube_to_goal_pos(obs_cache):
+            def cube_to_goal_dist(obs_cache):
                 if "cube_pos" in obs_cache and "goal_pos" in obs_cache:
                     return np.linalg.norm(obs_cache["goal_pos"] - obs_cache["cube_pos"])
                 return 0
 
-            sensors = [cube_pos, goal_pos, eef_to_cube_pos, cube_to_goal_pos]
+            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):
@@ -234,5 +234,4 @@ class Push(SingleArmEnv):
             if hasattr(self.robots[0], "gripper_visualization_sites") and self.robots[0].gripper_visualization_sites:
                 for site in self.robots[0].gripper_visualization_sites:
                     site_id = self.sim.model.site_name2id(site)
-                    rgba = self.sim.model.site_rgba[site_id]
                     self.sim.model.site_rgba[site_id] = np.array([0.0, 1.0, 0.0, 0.2 + 0.6 * alpha])
