@@ -2,12 +2,11 @@ import cem
 import llm
 import spec
 import utils
-import inspect
 import importlib
+from env import Push
 from agent import Agent
 import robosuite as suite
 from pathlib import Path
-from env import Push
 
 current_dir = Path(__file__).parent
 file_path = current_dir / "prompt.txt"

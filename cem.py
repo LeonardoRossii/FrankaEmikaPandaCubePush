@@ -5,7 +5,7 @@ def cem(
     n_training_iterations: int = 30,
     max_n_timesteps: int = 250,
     gamma: float = 0.99,
-    pop_size: int = 30,
+    pop_size: int = 50,
     elite_frac: float = 0.2,
     top_frac: float = 0.2,
     sigma: float = 0.20,
