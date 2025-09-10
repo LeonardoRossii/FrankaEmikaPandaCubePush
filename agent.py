@@ -35,6 +35,6 @@ class Agent():
             obs, reward, done, _, = self.env.step(action)
             episode_return += reward * math.pow(gamma, t)
 
-            if done or self.env._check_success() or self.env.termination_condition():
+            if done or self.env._check_success() or self.env._check_failure():
                 break
         return episode_return

@@ -1,11 +1,11 @@
 import numpy as np
-from robosuite.environments.manipulation.single_arm_env import SingleArmEnv 
 from robosuite.models.arenas import TableArena   
 from robosuite.models.objects import BoxObject   
 from robosuite.models.tasks import ManipulationTask   
 from robosuite.utils.mjcf_utils import CustomMaterial   
 from robosuite.utils.observables import Observable, sensor   
 from robosuite.utils.placement_samplers import UniformRandomSampler
+from robosuite.environments.manipulation.single_arm_env import SingleArmEnv 
 from reward import get_reward
 
 class Push(SingleArmEnv):
@@ -85,7 +85,7 @@ class Push(SingleArmEnv):
     def _check_success(self):
         return bool(self.goal_pos_world()[0] - self.sim.data.body_xpos[self.cube_body_id][0] <= 0)
     
-    def termination_condition(self):
+    def _check_failure(self):
         return bool(np.linalg.norm(self.sim.data.site_xpos[self.robots[0].eef_site_id] - self.sim.data.body_xpos[self.cube_body_id]) >= 0.2)
     
     def check_contact_table(self):
@@ -93,9 +93,18 @@ class Push(SingleArmEnv):
         for contact in self.sim.data.contact:
             geom1 = self.sim.model.geom_id2name(contact.geom1)
             geom2 = self.sim.model.geom_id2name(contact.geom2)
-            if ("table" in geom1 or "table" in geom2) and ("gripper" in geom1 or "gripper" in geom2):
+            if ("table" in geom1 or "table" in geom2) and ("gripper" in geom1 or "gripper" in geom2 or "robot" in geom1 or "robot" in geom2):
                 table_contact= True
         return table_contact
+    
+    def check_contact_cube(self):
+        cube_contact = False
+        for contact in self.sim.data.contact:
+            geom1 = self.sim.model.geom_id2name(contact.geom1)
+            geom2 = self.sim.model.geom_id2name(contact.geom2)
+            if ("cube_g0" in geom1 or "cube_g0" in geom2) and ("gripper0_finger1_collision" in geom1 or "gripper0_finger1_collision" in geom2 or "gripper0_finger2_collision" in geom1 or "gripper0_finger2_collision" in geom2):
+                cube_contact= True
+        return cube_contact            
 
     def _load_model(self):
         super()._load_model()

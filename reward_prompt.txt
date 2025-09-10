@@ -5,7 +5,7 @@ You must write a Python dense reward function get_reward(env, action) that retur
 Return only the executable Python function code without wrapping it in markdown backticks, namely not writing ```python and ```  respectively at the first and last lines. 
 
 Task:
-The robot gripper is close to a cube, touch it with the gripper fingers and push it to the goal position not touching the table where the cube.
+The robot gripper is close to a cube, reach the cube and touch it with the gripper fingers and push it to the goal position not touching the table where the cube.
 
 Success Criteria:
 The task is considered successfully completed when the target cube reaches the goal position.
@@ -19,6 +19,7 @@ cube_pos = env.sim.data.body_xpos[env.cube_body_id]
 goal_pos = env.goal_pos_world()
 env.check_contact(env.robots[0].gripper, env.cube)
 env.check_contact_table()
+env.check_contact_cube()
 T = 250
 
 Hints:

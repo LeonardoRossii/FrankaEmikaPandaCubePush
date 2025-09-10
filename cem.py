@@ -3,26 +3,27 @@ import numpy as np
 def cem(
     agent,
     n_training_iterations: int = 30,
-    max_n_timesteps: int = 0,
+    max_n_timesteps: int = 250,
     gamma: float = 0.99,
     pop_size: int = 30,
-    elite_frac: float = 0.3,
-    top_frac: float = 0.3,
-    sigma: float = 0.15,
-    alpha: float = 0.85,
+    elite_frac: float = 0.2,
+    top_frac: float = 0.2,
+    sigma: float = 0.20,
+    alpha: float = 0.90,
     beta: float = 0.25,
     softmax_temp: float = 1.0,
     sigma_min: float = 1e-3,
-    pop_decay = 0.97,
-    pop_min= 12,
+    pop_decay = 0.95,
+    pop_min= 8,
+    elite_min = 2,
 ):
     
     weight_dim = agent.get_weights_dim()
     mean_weight = 0 * np.random.randn(weight_dim)
     best_weight = mean_weight
 
-    n_elite_init = max(int(pop_size * elite_frac), 2)
-    n_top = max(int(max(n_elite_init, 2) * top_frac), 1)
+    n_elite_init = max(int(pop_size * elite_frac), elite_min)
+    n_top = max(int(max(n_elite_init, elite_min) * top_frac), 1)
 
     top_weights = [
         mean_weight + sigma * np.random.randn(weight_dim)
@@ -35,7 +36,7 @@ def cem(
         
         print(f"- Episode: {i_iteration}")
 
-        n_elite = max(int(pop_size * elite_frac), 2)
+        n_elite = max(int(pop_size * elite_frac), elite_min)
         weights_pop = [
             mean_weight + sigma * np.random.randn(weight_dim)
             for _ in range(pop_size - len(top_weights))

@@ -6,7 +6,7 @@ from robosuite.environments import ALL_ENVIRONMENTS
 
 if "Push" not in ALL_ENVIRONMENTS: ALL_ENVIRONMENTS["Push"] = Push
 controller = suite.load_controller_config(default_controller="OSC_POSE")
-policy_params = "policy_.txt"
+policy_params = "policy.txt"
 
 env = suite.make(
     "Push",
@@ -29,6 +29,14 @@ for step in range(250):
     state = agent.get_state(obs)
     action = agent.forward(state)
     obs, reward, done, info = env.step(action)
+    print(step)
+    for contact in env.sim.data.contact:
+        geom1 = env.sim.model.geom_id2name(contact.geom1)
+        geom2 = env.sim.model.geom_id2name(contact.geom2)
+        print("geom1: ", geom1)
+        print("geom2: ", geom2)
+    print(env.check_contact_table())
+
     if done or env._check_success():
         obs = env.reset()
         break
