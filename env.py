@@ -78,7 +78,7 @@ class Push(SingleArmEnv):
             renderer_config=renderer_config,
         )
 
-    def reward(self, action=None):
+    def reward(self, action=None, param = None):
         return spec.get_reward(self, action)
     
     def check_success(self):
