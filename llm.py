@@ -1,20 +1,13 @@
 import os
+import spec
+import utils
 import inspect
-import reward
 from pathlib import Path
 from openai import OpenAI
 
-def strip_code_fence(code_str):
-    lines = code_str.strip().splitlines()
-    if lines[0].startswith("```"):
-        lines = lines[1:]
-    if lines and lines[-1].startswith("```"):
-        lines = lines[:-1]
-    return "\n".join(lines)
-
-def rewrite_reward(
+def generate_spec(
     prompt: str,
-    reward_file_path: str = Path(inspect.getfile(reward)),
+    reward_file_path: str = Path(inspect.getfile(spec)),
     model: str = "gpt-4o",
     temperature: float = 0.0
     ):
@@ -30,6 +23,6 @@ def rewrite_reward(
     except Exception as err:
         raise RuntimeError(f"OpenAI call failed: {err}")
     content = response.output_text
-    content = strip_code_fence(content)
+    content = utils.strip_code(content)
     with open(reward_file_path, "w") as f:
         f.write(content)

@@ -83,5 +83,5 @@ def cem(
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
         if i_iteration == n_training_iterations:
-            np.savetxt('policy.txt', best_weight)
+            np.savetxt('theta.txt', best_weight)
     return best_rewards

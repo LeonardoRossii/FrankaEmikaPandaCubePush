@@ -1,5 +1,5 @@
-import numpy as np
 import math
+import numpy as np
 
 class Agent():
     def __init__(self, env, input_size, output_size):
@@ -28,13 +28,11 @@ class Agent():
         state = self.get_state(obs)
         self.set_weights(weights)
         episode_return = 0.0
-        
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            obs, reward, done, _, = self.env.step(action)
+            obs, reward, _, _, = self.env.step(action)
             episode_return += reward * math.pow(gamma, t)
-
-            if done or self.env._check_success() or self.env._check_failure():
+            if self.env.check_success() or self.env.check_failure():
                 break
         return episode_return

@@ -6,10 +6,9 @@ from robosuite.utils.mjcf_utils import CustomMaterial
 from robosuite.utils.observables import Observable, sensor   
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.environments.manipulation.single_arm_env import SingleArmEnv 
-from reward import get_reward
+import spec
 
 class Push(SingleArmEnv):
-
     def __init__(
         self,
         robots,
@@ -79,14 +78,14 @@ class Push(SingleArmEnv):
             renderer_config=renderer_config,
         )
 
-    def reward(env, action=None):
-        return get_reward(env, action)
+    def reward(self, action=None):
+        return spec.get_reward(self, action)
     
-    def _check_success(self):
-        return bool(self.goal_pos_world()[0] - self.sim.data.body_xpos[self.cube_body_id][0] <= 0)
+    def check_success(self):
+        return spec.get_success_condition(self)
     
-    def _check_failure(self):
-        return bool(np.linalg.norm(self.sim.data.site_xpos[self.robots[0].eef_site_id] - self.sim.data.body_xpos[self.cube_body_id]) >= 0.2)
+    def check_failure(self):
+        return spec.get_failure_condition(self)
     
     def check_contact_table(self):
         table_contact= False
@@ -104,7 +103,7 @@ class Push(SingleArmEnv):
             geom2 = self.sim.model.geom_id2name(contact.geom2)
             if ("cube_g0" in geom1 or "cube_g0" in geom2) and ("gripper0_finger1_collision" in geom1 or "gripper0_finger1_collision" in geom2 or "gripper0_finger2_collision" in geom1 or "gripper0_finger2_collision" in geom2):
                 cube_contact= True
-        return cube_contact            
+        return cube_contact
 
     def _load_model(self):
         super()._load_model()
@@ -171,7 +170,9 @@ class Push(SingleArmEnv):
 
             @sensor(modality=modality)
             def goal_pos(obs_cache):
-                return np.array(self.goal_pos_world())
+                table_z = self.model.mujoco_arena.table_offset[2]
+                goal_pos =  np.array([self.goal_xy[0], self.goal_xy[1], table_z + 0.001], dtype=float)
+                return goal_pos
 
             @sensor(modality=modality)
             def eef_to_cube_pos(obs_cache):
@@ -204,7 +205,7 @@ class Push(SingleArmEnv):
                 self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
 
         cube_xy = self.sim.data.body_xpos[self.cube_body_id][:2].copy()
-        self.goal_xy = self.set_goal_xy(cube_xy)
+        self.goal_xy =  cube_xy + self.goal_pos_offset
         self.sim.forward()
         cube_pos = self.sim.data.body_xpos[self.cube_body_id]
         self._last_obj_goal_dist = np.linalg.norm(cube_pos[:2] - self.goal_xy)
@@ -217,7 +218,8 @@ class Push(SingleArmEnv):
                 target=None,
             )
             eef_pos = self.sim.data.site_xpos[self.robots[0].eef_site_id]
-            goal_pos = self.goal_pos_world()
+            table_z = self.model.mujoco_arena.table_offset[2]
+            goal_pos =  np.array([self.goal_xy[0], self.goal_xy[1], table_z + 0.001], dtype=float)
             d = np.linalg.norm(eef_pos - goal_pos)
             alpha = 1 - np.tanh(5.0 * d)
             if hasattr(self.robots[0], "gripper_visualization_sites") and self.robots[0].gripper_visualization_sites:
@@ -225,10 +227,3 @@ class Push(SingleArmEnv):
                     site_id = self.sim.model.site_name2id(site)
                     rgba = self.sim.model.site_rgba[site_id]
                     self.sim.model.site_rgba[site_id] = np.array([0.0, 1.0, 0.0, 0.2 + 0.6 * alpha])
-
-    def goal_pos_world(self):
-        table_z = self.model.mujoco_arena.table_offset[2]
-        return np.array([self.goal_xy[0], self.goal_xy[1], table_z + 0.001], dtype=float)
-
-    def set_goal_xy(self, cube_xy):
-        return cube_xy + self.goal_pos_offset

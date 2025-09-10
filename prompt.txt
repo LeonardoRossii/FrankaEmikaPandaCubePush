@@ -1,0 +1,51 @@
+Goal:
+You are a reinforcement learning expert trying to write reward function, success condition and failure condition to solve reinforcement learning tasks as effective as possibly.
+Your goal is to write:
+- A dense reward function for the environment that will help the agent learn the task described in the following lines.
+- A success condition function for the environment to define if the task is successfully achieved and False otherwise.
+- A failure condition function for the environment to define if the task is failed.
+You must write a Python:
+- Dense reward function get_reward(env, action) that returns (reward: float) and importing all the necessary libraries.
+- Function get_success_condition(env) that returns (success: bool)
+- Function get_failure_condition(env) that returns (failure: bool)
+Return only the executable Python function code without wrapping it in markdown backticks, namely not writing ```python and ```  respectively at the first and last lines. 
+
+Task:
+The robot gripper is close to a cube, first it must reach the cube and touch it with the gripper fingers and then push it to the goal position not touching the table where the cube is placed.
+
+Success Criteria:
+The task is considered successfully completed when the target cube reaches the goal position.
+
+Failure Condition:
+Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m.
+
+Variables:
+eef_pos = env.sim.data.site_xpos[env.robots[0].eef_site_id]
+cube_pos = env.sim.data.body_xpos[env.cube_body_id]      
+goal_pos =  np.array([self.goal_xy[0], self.goal_xy[1], self.model.mujoco_arena.table_offset[2] + 0.001], dtype=float)
+table_contact = env.check_contact_table()
+cube_contact = env.check_contact_cube()
+T = 250
+
+Hints for reward function generation:
+- Define dense shaping terms
+- After definig the other task shaping terms, define a terminal term of the reward function when the task is completed
+- Define also a penalty term if the task is failed
+
+Formalization for reward function generation:
+- The terminal reward for completing the task must be at least one order of magnitude greater than the sum af all the cumulative rewards that the agent can collect during the trajectory in time horizon before termination:
+  Hence given the definition of the previous reward terms, think carefully and understand the possible maximum value for each task shaping term term and compute the terminal term as:
+  terminal_reward >= 10 * T  * sum(possible maximum of each task-completion relatedrewards)
+- The general reward function would be on the form:
+  R = sum of shaping_reward_terms + terminal 
+
+Example:
+# log.py
+def get_reward(env, action):
+    return reward
+
+def get_success_condition(env):
+    return success
+
+def get_failure_condition(env):
+    return failure
