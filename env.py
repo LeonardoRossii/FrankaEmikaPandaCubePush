@@ -87,6 +87,15 @@ class Push(SingleArmEnv):
     def check_failure(self):
         return spec.get_failure_condition(self)
     
+    def get_eef_pos(self):
+        return self.sim.data.site_xpos[self.robots[0].eef_site_id]
+    
+    def get_cube_pos(self):
+        return self.sim.data.body_xpos[self.cube_body_id] 
+    
+    def get_goal_pos(self):
+        return np.array([self.goal_xy[0], self.goal_xy[1], self.model.mujoco_arena.table_offset[2] + 0.001], dtype=float)
+    
     def check_contact_table(self):
         table_contact= False
         for contact in self.sim.data.contact:

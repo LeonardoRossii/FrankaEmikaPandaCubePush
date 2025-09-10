@@ -1,5 +1,6 @@
 Goal:
 You are a reinforcement learning expert trying to write reward function, success condition and failure condition to solve reinforcement learning tasks as effective as possibly.
+Your should use useful variables from the environment that is provided to you.
 Your goal is to write:
 - A dense reward function for the environment that will help the agent learn the task described in the following lines.
 - A success condition function for the environment to define if the task is successfully achieved and False otherwise.
@@ -11,26 +12,22 @@ You must write a Python:
 Return only the executable Python function code without wrapping it in markdown backticks, namely not writing ```python and ```  respectively at the first and last lines. 
 
 Task:
-The robot gripper is close to a cube, first it must reach the cube and and then push, with the gripper fingers, push it to the goal position avoiding to touch the table.
+The robot gripper is close to a cube, first it must reach the cube and and then with the gripper fingers touch it and push it to the goal position avoiding to touch the table.
 
 Success Criteria:
-The task is considered successfully completed when the target cube reaches the goal position.
+The task is considered successfully completed when the target cube reaches the goal position, namely distance between them is lower than 0.04.
 
 Failure Condition:
 Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m.
 
-Variables:
-eef_pos = env.sim.data.site_xpos[env.robots[0].eef_site_id]
-cube_pos = env.sim.data.body_xpos[env.cube_body_id]      
-goal_pos =  np.array([self.goal_xy[0], self.goal_xy[1], self.model.mujoco_arena.table_offset[2] + 0.001], dtype=float)
-table_contact = env.check_contact_table()
-cube_contact = env.check_contact_cube()
-env.horizon 
-
 Hints for reward function generation:
 - Define dense shaping terms
 - After definig the other task shaping terms, define a terminal term of the reward function when the task is completed
-- Define also a penalty term if the task is failed with value same of terminal reward but negative
+- The reward function should implement a shaping that clearly guides the policy towards the goal
+- The reward components should not be too disproportionate.
+- To incentive to get close to an object you should reward the decrease of distance and the contact with said objects, if you want to avoid touching another object just give negative rewards if that is touched.
+- Penalties for unwanted actions should be very small in absolute value, compared to positive rewards.
+- Do not include comments in the Python script
 
 Formalization for reward function generation:
 - The terminal reward for completing the task must be at least one order of magnitude greater than the sum af all the cumulative rewards that the agent can collect during the trajectory in time horizon before termination:
@@ -38,12 +35,10 @@ Formalization for reward function generation:
   1. Think carefully and understand the possible maximum value for each shaping term
   2. Define the terminal term exactly as:  
           terminal_reward_term = 10 * env.horizon * sum(possible maximum value for each shaping term)
-
 - The general reward function would be on the form:
   reward = sum_of_shaping_reward_terms + terminal_reward_term
 
-Example:
-# log.py
+Structure:
 def get_reward(env, action):
     return reward
 

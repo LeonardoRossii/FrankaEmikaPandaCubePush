@@ -11,9 +11,11 @@ def generate_spec(
     model: str = "gpt-4o",
     temperature: float = 0.0
     ):
+
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if not client.api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
+    
     try:
         response = client.responses.create(
             model=model,
@@ -22,7 +24,9 @@ def generate_spec(
         )
     except Exception as err:
         raise RuntimeError(f"OpenAI call failed: {err}")
+    
     content = response.output_text
     content = utils.strip_code(content)
+    
     with open(reward_file_path, "w") as f:
         f.write(content)

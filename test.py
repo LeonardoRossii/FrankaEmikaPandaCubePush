@@ -15,22 +15,19 @@ env = suite.make(
     has_offscreen_renderer=False,
     use_camera_obs=False,
     render_camera="sideview",      
-    control_freq=25,             
+    control_freq=25,     
 )
 
 obs = env.reset()
-
-input_dim = 2
-output_dim = 7
-agent = Agent(env, input_dim, output_dim)
+agent = Agent(env, env.action_dim)
 agent.set_weights(np.loadtxt("theta.txt"))
 
 for step in range(250):
+    print(env.check_contact_cube())
     state = agent.get_state(obs)
     action = agent.forward(state)
     obs, reward, done, info = env.step(action)
     if done or env.check_success():
-        obs = env.reset()
         break
     env.render()
 env.close()

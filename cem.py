@@ -6,18 +6,17 @@ def cem(
     max_n_timesteps: int = 250,
     gamma: float = 0.99,
     pop_size: int = 50,
-    elite_frac: float = 0.2,
+    elite_frac: float = 0.25,
     top_frac: float = 0.2,
-    sigma: float = 0.20,
-    alpha: float = 0.90,
-    beta: float = 0.25,
+    sigma: float = 0.1,
+    alpha: float = 0.9,
+    beta: float = 0.2,
     softmax_temp: float = 1.0,
     sigma_min: float = 1e-3,
-    pop_decay = 0.95,
-    pop_min= 8,
-    elite_min = 2,
-):
-    
+    pop_decay: float = 0.95,
+    pop_min: int = 8,
+    elite_min: int = 2,
+):  
     weight_dim = agent.get_weights_dim()
     mean_weight = 0 * np.random.randn(weight_dim)
     best_weight = mean_weight
@@ -33,10 +32,10 @@ def cem(
     best_rewards = []
 
     for i_iteration in range(1, n_training_iterations + 1):
-        
         print(f"- Episode: {i_iteration}")
 
         n_elite = max(int(pop_size * elite_frac), elite_min)
+        
         weights_pop = [
             mean_weight + sigma * np.random.randn(weight_dim)
             for _ in range(pop_size - len(top_weights))
@@ -54,7 +53,6 @@ def cem(
 
         returns = np.asarray(returns, dtype=float)
         elite_idxs = np.argsort(returns)[-n_elite:]
-        print(elite_idxs)
         elite_weights = np.array([weights_pop[i] for i in elite_idxs])
         elite_scores = returns[elite_idxs]
 
@@ -62,10 +60,8 @@ def cem(
         logits = (elite_scores - shift) / max(1e-8, softmax_temp)
         w = np.exp(logits)
         w_sum = w.sum()
-        if not np.isfinite(w_sum) or w_sum <= 0:
-            w = np.ones_like(elite_scores) / len(elite_scores)
-        else:
-            w /= w_sum
+        if not np.isfinite(w_sum) or w_sum <= 0: w = np.ones_like(elite_scores) / len(elite_scores)
+        else: w /= w_sum
         weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
 
         n_top_iter = min(n_top, n_elite)
@@ -76,7 +72,6 @@ def cem(
         mean_weight = alpha * weighted_mean_score + (1 - alpha) * mean_weight
         elite_std = np.std(elite_weights, axis=0)
         sigma = beta * elite_std + (1 - beta) * sigma
-
         sigma = np.maximum(sigma, sigma_min)
         best_rewards.append(best_reward)
     
@@ -84,4 +79,5 @@ def cem(
 
         if i_iteration == n_training_iterations:
             np.savetxt('theta.txt', best_weight)
+
     return best_rewards

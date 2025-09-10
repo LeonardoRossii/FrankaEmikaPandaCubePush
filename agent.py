@@ -2,12 +2,12 @@ import math
 import numpy as np
 
 class Agent():
-    def __init__(self, env, input_size, output_size):
+    def __init__(self, env, output_size):
         self.env = env
-        self.input_size = input_size
+        self.input_size = 2
         self.output_size = output_size
-        self.A = np.zeros((output_size, input_size))
-        self.b = np.zeros(output_size)
+        self.A = np.zeros((self.output_size, self.input_size))
+        self.b = np.zeros(self.output_size)
 
     def get_state(self,  obs):
         return np.array([obs["eef_to_cube_pos"], obs["cube_to_goal_pos"]])
