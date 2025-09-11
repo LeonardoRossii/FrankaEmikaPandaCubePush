@@ -103,5 +103,5 @@ def cem(
         c_param = c_param + update_factor*(best_param-c_param)
         params = utils.sample_params(c_param, n_params)
 
-        if i_iteration == n_training_iterations:
+        if i_iteration == n_training_iterations-1:
             np.savetxt('theta.txt', best_weight)
