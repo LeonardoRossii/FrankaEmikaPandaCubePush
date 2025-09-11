@@ -43,4 +43,4 @@ env = suite.make(
 
 obs = env.reset()
 agent = Agent(env, env.action_dim)
-_ = cem.cem(agent, max_n_timesteps=250)
+cem.cem(agent, max_n_timesteps=250)

@@ -1,24 +1,39 @@
+import llm
+import utils
 import numpy as np
+from pathlib import Path
 
 def cem(
     agent,
-    n_training_iterations: int = 30,
+    n_training_iterations: int = 5,
     max_n_timesteps: int = 250,
     gamma: float = 0.99,
-    pop_size: int = 50,
+    pop_size: int = 10,
     elite_frac: float = 0.25,
     top_frac: float = 0.2,
     sigma: float = 0.1,
     alpha: float = 0.9,
     beta: float = 0.2,
-    softmax_temp: float = 1.0,
     sigma_min: float = 1e-3,
     pop_decay: float = 0.95,
     pop_min: int = 8,
     elite_min: int = 2,
+    init_param: float = 0.0,
+    n_params: int = 3,
+    update_factor: float = 0.15,
 ):  
+    current_dir = Path(__file__).parent
+    file_task_description_path = current_dir / "prompt_.txt"
+    with open(file_task_description_path, "r") as file:
+        prompt = file.read().strip()
+
+    c_param = init_param
+    best_param = c_param
+    params = utils.sample_params(c_param, n_params)
+
     weight_dim = agent.get_weights_dim()
-    mean_weight = 0 * np.random.randn(weight_dim)
+    init_best_weight = 0 * np.random.randn(weight_dim)
+    mean_weight = init_best_weight
     best_weight = mean_weight
 
     n_elite_init = max(int(pop_size * elite_frac), elite_min)
@@ -29,10 +44,12 @@ def cem(
         for _ in range(n_top)
     ]
 
-    best_rewards = []
-
     for i_iteration in range(1, n_training_iterations + 1):
         print(f"- Episode: {i_iteration}")
+        
+        returns = []
+        best_returns_param = [-np.inf] * n_params
+        best_weights_param = np.stack([init_best_weight.copy() for _ in range(n_params)])
 
         n_elite = max(int(pop_size * elite_frac), elite_min)
         
@@ -44,40 +61,46 @@ def cem(
         for w in top_weights:
             weights_pop.append(w)
 
-        returns = []
-
         for i, weight in enumerate(weights_pop):
-            return_ = agent.evaluate(weight, max_n_timesteps, gamma)
-            returns.append(return_)
-            print(f"return {i}: {return_}")
+
+            k_returns = agent.evaluate(weight, params, max_n_timesteps, gamma)
+            
+            better = k_returns > best_returns_param
+            if np.any(better):
+                best_returns_param[better] = k_returns[better]
+                best_weights_param[better] = weight
+            
+            returns.append(k_returns[-1])
+            print(f"return {i}: {k_returns[-1]}")
 
         returns = np.asarray(returns, dtype=float)
-        elite_idxs = np.argsort(returns)[-n_elite:]
+        
+        elite_idxs = np.argpartition(returns, -n_elite)[-n_elite:]
         elite_weights = np.array([weights_pop[i] for i in elite_idxs])
         elite_scores = returns[elite_idxs]
 
-        shift = elite_scores.max()
-        logits = (elite_scores - shift) / max(1e-8, softmax_temp)
-        w = np.exp(logits)
-        w_sum = w.sum()
-        if not np.isfinite(w_sum) or w_sum <= 0: w = np.ones_like(elite_scores) / len(elite_scores)
-        else: w /= w_sum
-        weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
+        order = np.argsort(elite_scores)
+        elite_weights = elite_weights[order]
+        elite_scores = elite_scores[order]
 
         n_top_iter = min(n_top, n_elite)
-        top_weights = elite_weights[-n_top_iter:]
-        best_weight = elite_weights[-1]
-        best_reward = elite_scores[-1]
+        top_weights = [elite_weights[-j - 1].copy() for j in range(n_top_iter)]
+        best_weight = elite_weights[-1].copy()
 
-        mean_weight = alpha * weighted_mean_score + (1 - alpha) * mean_weight
+        elite_mean = utils.weighted_mean(elite_scores, elite_weights, softmax_temp=1.0)
+        mean_weight = alpha * elite_mean + (1 - alpha) * mean_weight
         elite_std = np.std(elite_weights, axis=0)
         sigma = beta * elite_std + (1 - beta) * sigma
         sigma = np.maximum(sigma, sigma_min)
-        best_rewards.append(best_reward)
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
+        if not utils.same_best_weight(best_weights_param):
+            best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
+            best_param = params[best_index]
+
+        c_param = c_param + update_factor*(best_param-c_param)
+        params = utils.sample_params(c_param, n_params)
+
         if i_iteration == n_training_iterations:
             np.savetxt('theta.txt', best_weight)
-
-    return best_rewards
