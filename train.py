@@ -8,20 +8,23 @@ from agent import Agent
 from pathlib import Path
 import robosuite as suite
 
-current_dir = Path(__file__).parent
+generate_new_task_spec = False
+if generate_new_task_spec:
+    
+    current_dir = Path(__file__).parent
 
-file_task_description_path = current_dir / "prompt.txt"
-with open(file_task_description_path, "r") as file:
-    prompt = file.read().strip()
+    file_task_description_path = current_dir / "prompt.txt"
+    with open(file_task_description_path, "r") as file:
+        prompt = file.read().strip()
 
-file_environment_class_path = current_dir / "env.py"
-with open(file_environment_class_path, "r") as file:
-    env_class = file.read().strip()
+    file_environment_class_path = current_dir / "env.py"
+    with open(file_environment_class_path, "r") as file:
+        env_class = file.read().strip()
 
-prompt += "\n\n# Environment class: \n" + env_class
+    prompt += "\n\n# Environment class: \n" + env_class
 
-llm.generate_spec(prompt)
-importlib.reload(spec)
+    llm.generate_spec(prompt)
+    importlib.reload(spec)
 
 utils.register_environment(Push, "Push")
 controller = suite.load_controller_config(default_controller="OSC_POSE")

@@ -36,3 +36,25 @@ class Agent():
             if self.env.check_success() or self.env.check_failure():
                 break
         return episode_return
+    
+    def episode(self, weight, max_n_timesteps):
+        
+        obs = self.env.reset()
+        state = self.get_state(obs)
+        self.set_weights(weight)
+
+        eef_to_cube_dist_ = []
+        cube_to_goal_dist_ = []
+
+        for t in range(max_n_timesteps):
+            state = self.get_state(obs)
+            action = self.forward(state)
+            obs, _, done, _, = self.env.step(action)
+
+            eef_to_cube_dist_.append(obs["eef_to_cube_dist"].item())
+            cube_to_goal_dist_.append(obs["cube_to_goal_dist"].item())
+
+            if done or self.env.check_success() or self.env.check_failure():
+                dict = {"eef_to_cube_dist": eef_to_cube_dist_,"cube_to_goal_dist": cube_to_goal_dist_}
+                break
+        return dict
