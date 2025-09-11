@@ -5,17 +5,17 @@ from pathlib import Path
 
 def cem(
     agent,
-    n_training_iterations: int = 5,
+    n_training_iterations: int = 20,
     max_n_timesteps: int = 250,
     gamma: float = 0.99,
-    pop_size: int = 10,
+    pop_size: int = 30,
     elite_frac: float = 0.25,
     top_frac: float = 0.2,
     sigma: float = 0.1,
     alpha: float = 0.9,
     beta: float = 0.2,
     sigma_min: float = 1e-3,
-    pop_decay: float = 0.95,
+    pop_decay: float = 0.96,
     pop_min: int = 8,
     elite_min: int = 2,
     init_param: float = 0.0,
@@ -23,7 +23,7 @@ def cem(
     update_factor: float = 0.15,
 ):  
     current_dir = Path(__file__).parent
-    file_task_description_path = current_dir / "prompt_.txt"
+    file_task_description_path = current_dir / "pmptpref.txt"
     with open(file_task_description_path, "r") as file:
         prompt = file.read().strip()
 
@@ -44,8 +44,9 @@ def cem(
         for _ in range(n_top)
     ]
 
-    for i_iteration in range(1, n_training_iterations + 1):
+    for i_iteration in range(0, n_training_iterations):
         print(f"- Episode: {i_iteration}")
+        print(f"- Params:  {params}")
         
         returns = []
         best_returns_param = [-np.inf] * n_params
@@ -65,13 +66,13 @@ def cem(
 
             k_returns = agent.evaluate(weight, params, max_n_timesteps, gamma)
             
-            better = k_returns > best_returns_param
-            if np.any(better):
-                best_returns_param[better] = k_returns[better]
-                best_weights_param[better] = weight
+            for j, k_ret in enumerate(k_returns):
+                if k_ret > best_returns_param[j]:
+                    best_returns_param[j] = k_ret
+                    best_weights_param[j] = weight
             
             returns.append(k_returns[-1])
-            print(f"return {i}: {k_returns[-1]}")
+            print(f"return {i}: {(k_returns[-1])}")
 
         returns = np.asarray(returns, dtype=float)
         
@@ -95,7 +96,7 @@ def cem(
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
-        if not utils.same_best_weight(best_weights_param):
+        if i_iteration%3==0 and not utils.same_best_weight(best_weights_param):
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
             best_param = params[best_index]
 

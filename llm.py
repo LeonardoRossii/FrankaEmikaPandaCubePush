@@ -43,9 +43,6 @@ def get_preference(agent, weights, max_n_timesteps, prompt):
     trajs = [agent.episode(weight, max_n_timesteps) for weight in weights]
     tdesc = "\n\n".join(f"Trajectory {i}:\n{json.dumps(t, indent=2)}" for i, t in enumerate(trajs))
     prompt = f"{prompt.rstrip()}\n\nTrajectories:\n{tdesc}"
-
-    print("Prompt: ", prompt)
-
     try:
         response = client.responses.create(
             model = "gpt-4o",
@@ -55,11 +52,9 @@ def get_preference(agent, weights, max_n_timesteps, prompt):
     except Exception as err:
         raise RuntimeError(f"OpenAI call failed: {err}")
 
-    content = response.output_text
-
-    print("Response: ", content)
-
-    match = re.search(r"idx\s*=\s*(\d+)", content)
+    answ = response.output_text
+    print(answ)
+    match = re.search(r"idx\s*=\s*(\d+)", answ)
     if match:
         idx = int(match.group(1))
 

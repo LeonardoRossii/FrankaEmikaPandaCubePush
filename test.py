@@ -26,7 +26,7 @@ for step in range(250):
     print(env.check_contact_cube())
     state = agent.get_state(obs)
     action = agent.forward(state)
-    obs, reward, done, info = env.step(action)
+    obs, _, done, _ = env.step(action, [0])
     if done or env.check_success():
         break
     env.render()

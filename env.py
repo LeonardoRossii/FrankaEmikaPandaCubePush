@@ -96,6 +96,12 @@ class Push(SingleArmEnv):
     def get_goal_pos(self):
         return np.array([self.goal_xy[0], self.goal_xy[1], self.model.mujoco_arena.table_offset[2] + 0.001], dtype=float)
     
+    def get_cube_bound_dist(self):
+        return min(
+            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]-self.table_full_size[1]),
+            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]+self.table_full_size[1])
+        )
+        
     def check_contact_table(self):
         table_contact= False
         for contact in self.sim.data.contact:
@@ -113,6 +119,7 @@ class Push(SingleArmEnv):
             if ("cube_g0" in geom1 or "cube_g0" in geom2) and ("gripper0_finger1_collision" in geom1 or "gripper0_finger1_collision" in geom2 or "gripper0_finger2_collision" in geom1 or "gripper0_finger2_collision" in geom2):
                 cube_contact= True
         return cube_contact
+
 
     def _load_model(self):
         super()._load_model()
@@ -195,7 +202,16 @@ class Push(SingleArmEnv):
                     return np.linalg.norm(obs_cache["goal_pos"] - obs_cache["cube_pos"])
                 return 0
 
-            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist]
+            @sensor(modality=modality)
+            def cube_to_bound_dist(obs_cache):
+                if "cube_pos" in obs_cache:
+                    return min(
+                        np.linalg.norm(obs_cache["cube_pos"][1] - self.table_full_size[1]),
+                        np.linalg.norm(obs_cache["cube_pos"][1] + self.table_full_size[1])
+                        )
+                return 0
+
+            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist, cube_to_bound_dist]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):

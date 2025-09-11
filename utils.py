@@ -28,13 +28,12 @@ def sample_params(c_param, n_params):
     params = []
     if c_param != 0.0:
         while True:
-            params = np.abs(np.random.normal(c_param, 0.1, size=n_params-1)).tolist()
+            params = np.abs(np.random.normal(c_param, 0.25, size=n_params-1)).tolist()
             if ((params[0] < c_param and params[1] > c_param) or
                 (params[0] > c_param and params[1] < c_param)) and all(x <= 1 for x in params):
                 break
     else:
-        params = np.abs(np.random.normal(c_param, 0.1, size=n_params-1)).tolist()
-    print(params)
+        params = np.abs(np.random.normal(c_param, 0.25, size=n_params-1)).tolist()
     params.append(c_param)
     return params
 

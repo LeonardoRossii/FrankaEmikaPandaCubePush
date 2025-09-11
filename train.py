@@ -13,7 +13,7 @@ if generate_new_task_spec:
     
     current_dir = Path(__file__).parent
 
-    file_task_description_path = current_dir / "prompt.txt"
+    file_task_description_path = current_dir / "pmptspec.txt"
     with open(file_task_description_path, "r") as file:
         prompt = file.read().strip()
 

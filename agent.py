@@ -46,16 +46,19 @@ class Agent():
 
         eef_to_cube_dist_ = []
         cube_to_goal_dist_ = []
+        cube_to_boundary_dist = []
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
             obs, _, done, _, = self.env.step(action, param)
 
-            eef_to_cube_dist_.append(obs["eef_to_cube_dist"].item())
-            cube_to_goal_dist_.append(obs["cube_to_goal_dist"].item())
+            if t%10==0:
+                eef_to_cube_dist_.append(obs["eef_to_cube_dist"].item())
+                cube_to_goal_dist_.append(obs["cube_to_goal_dist"].item())
+                cube_to_boundary_dist.append(obs["cube_to_bound_dist"].item())
 
             if done or self.env.check_success() or self.env.check_failure():
-                dict = {"eef_to_cube_dist": eef_to_cube_dist_,"cube_to_goal_dist": cube_to_goal_dist_}
+                dict = {"eef_to_cube_dist": eef_to_cube_dist_,"cube_to_goal_dist": cube_to_goal_dist_, "cube_to_boundary_dist": cube_to_boundary_dist}
                 break
         return dict

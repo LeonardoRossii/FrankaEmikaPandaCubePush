@@ -3,8 +3,9 @@ You must analyze all the trajectories metrics that are provideed to you and you 
 Given the preferred trajectory index i, you must return clearly as the final line of the response: idx = i.
 
 Task:
-The robot gripper is close to a cube, first it must reach the cube and and then with the gripper fingers touch it and push it to the goal position avoiding to touch the table.
+The robot gripper is close to a cube, first it must reach the cube and and then with the gripper fingers touch it and push it to the goal position avoiding to touch the table and letting the cube slip.
 
 Metrics:
 - eef_to_cube_dist = Distance between the robot end effector and the cube.
 - cube_to_goal_dist = Distance between the cube and the cube goal position.
+- cube_to_boundary_dist = Distance between the cube and the nearest boundary table.
