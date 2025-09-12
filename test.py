@@ -14,16 +14,15 @@ env = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    render_camera="sideview",      
+    render_camera="frontview",      
     control_freq=25,     
 )
 
 obs = env.reset()
 agent = Agent(env, env.action_dim)
-agent.set_weights(np.loadtxt("theta.txt"))
+agent.set_weights(np.loadtxt("iota.txt"))
 
 for step in range(250):
-    print(env.check_contact_cube())
     state = agent.get_state(obs)
     action = agent.forward(state)
     obs, _, done, _ = env.step(action, [0])

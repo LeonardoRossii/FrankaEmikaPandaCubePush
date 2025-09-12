@@ -101,7 +101,7 @@ class Push(SingleArmEnv):
             np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]-self.table_full_size[1]),
             np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]+self.table_full_size[1])
         )
-        
+     
     def check_contact_table(self):
         table_contact= False
         for contact in self.sim.data.contact:

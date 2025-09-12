@@ -53,7 +53,6 @@ def get_preference(agent, weights, max_n_timesteps, prompt):
         raise RuntimeError(f"OpenAI call failed: {err}")
 
     answ = response.output_text
-    print(answ)
     match = re.search(r"idx\s*=\s*(\d+)", answ)
     if match:
         idx = int(match.group(1))

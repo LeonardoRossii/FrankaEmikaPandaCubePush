@@ -8,7 +8,7 @@ from agent import Agent
 from pathlib import Path
 import robosuite as suite
 
-generate_new_task_spec = False
+generate_new_task_spec = True
 if generate_new_task_spec:
     
     current_dir = Path(__file__).parent

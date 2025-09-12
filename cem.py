@@ -13,7 +13,7 @@ def cem(
     top_frac: float = 0.2,
     sigma: float = 0.1,
     alpha: float = 0.9,
-    beta: float = 0.2,
+    beta: float = 0.25,
     sigma_min: float = 1e-3,
     pop_decay: float = 0.96,
     pop_min: int = 8,
@@ -21,6 +21,7 @@ def cem(
     init_param: float = 0.0,
     n_params: int = 3,
     update_factor: float = 0.15,
+    pref_freq = 2,
 ):  
     current_dir = Path(__file__).parent
     file_task_description_path = current_dir / "pmptpref.txt"
@@ -96,7 +97,7 @@ def cem(
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
-        if i_iteration%3==0 and not utils.same_best_weight(best_weights_param):
+        if i_iteration%pref_freq==0 and not utils.same_best_weight(best_weights_param):
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
             best_param = params[best_index]
 
