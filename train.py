@@ -43,4 +43,5 @@ env = suite.make(
 
 obs = env.reset()
 agent = Agent(env, env.action_dim)
-cem.cem(agent, max_n_timesteps=250)
+drops = cem.cem(agent, max_n_timesteps=250)
+print("Total drops:", drops)

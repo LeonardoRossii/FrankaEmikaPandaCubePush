@@ -1,6 +1,7 @@
 import numpy as np
 import utils
 from agent import Agent
+from filters import Filter
 import robosuite as suite
 from env import Push
 
@@ -14,17 +15,19 @@ env = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    render_camera="frontview",      
+    render_camera="sideview",      
     control_freq=25,     
 )
 
 obs = env.reset()
 agent = Agent(env, env.action_dim)
-agent.set_weights(np.loadtxt("iota.txt"))
+sfae_filter = Filter(env)
+agent.set_weights(np.loadtxt("theta.txt"))
 
 for step in range(250):
     state = agent.get_state(obs)
     action = agent.forward(state)
+    action = sfae_filter.apply(action)
     obs, _, done, _ = env.step(action, [0])
     if done or env.check_success():
         break

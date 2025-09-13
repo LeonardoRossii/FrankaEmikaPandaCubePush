@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from filters import Filter
 
 class Agent():
     def __init__(self, env, output_size):
@@ -8,13 +9,14 @@ class Agent():
         self.output_size = output_size
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
+        self.safe_filter = Filter(self.env)
 
     def get_state(self,  obs):
         return np.array([obs["eef_to_cube_dist"], obs["cube_to_goal_dist"]])
 
     def set_weights(self, weights):
         A_size = self.output_size * self.input_size
-        self.A[:] = weights[:A_size].reshape((self.output_size, self.input_size))  
+        self.A[:] = weights[:A_size].reshape((self.output_size, self.input_size))
         self.b[:] = weights[A_size:]  
     
     def get_weights_dim(self):
@@ -31,12 +33,13 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
+            action = self.safe_filter.apply(action)
             obs, rewards, _, _, = self.env.step(action, params)
             for i in range(len(rewards)):
                 episode_returns[i] += rewards[i] * math.pow(gamma, t)
             if self.env.check_success() or self.env.check_failure():
                 break
-        return episode_returns
+        return episode_returns, obs["cube_drop"]
     
     def episode(self, weight, max_n_timesteps):
         param = [0]
@@ -51,6 +54,7 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
+            action = self.safe_filter.apply(action)
             obs, _, done, _, = self.env.step(action, param)
 
             if t%10==0:

@@ -20,7 +20,7 @@ def cem(
     elite_min: int = 2,
     init_param: float = 0.0,
     n_params: int = 3,
-    update_factor: float = 0.15,
+    update_factor: float = 0.1,
     pref_freq = 2,
 ):  
     current_dir = Path(__file__).parent
@@ -45,6 +45,8 @@ def cem(
         for _ in range(n_top)
     ]
 
+    drops = 0
+
     for i_iteration in range(0, n_training_iterations):
         print(f"- Episode: {i_iteration}")
         print(f"- Params:  {params}")
@@ -65,7 +67,8 @@ def cem(
 
         for i, weight in enumerate(weights_pop):
 
-            k_returns = agent.evaluate(weight, params, max_n_timesteps, gamma)
+            k_returns, drop = agent.evaluate(weight, params, max_n_timesteps, gamma)
+            drops += int(drop)
             
             for j, k_ret in enumerate(k_returns):
                 if k_ret > best_returns_param[j]:
@@ -104,5 +107,8 @@ def cem(
         c_param = c_param + update_factor*(best_param-c_param)
         params = utils.sample_params(c_param, n_params)
 
+        print(f"drops: {(drops)}")
         if i_iteration == n_training_iterations-1:
             np.savetxt('theta.txt', best_weight)
+    
+    return drops

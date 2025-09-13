@@ -98,8 +98,8 @@ class Push(SingleArmEnv):
     
     def get_cube_bound_dist(self):
         return min(
-            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]-self.table_full_size[1]),
-            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]+self.table_full_size[1])
+            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]-self.table_full_size[1]/2),
+            np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]+self.table_full_size[1]/2)
         )
      
     def check_contact_table(self):
@@ -206,12 +206,17 @@ class Push(SingleArmEnv):
             def cube_to_bound_dist(obs_cache):
                 if "cube_pos" in obs_cache:
                     return min(
-                        np.linalg.norm(obs_cache["cube_pos"][1] - self.table_full_size[1]),
-                        np.linalg.norm(obs_cache["cube_pos"][1] + self.table_full_size[1])
+                        np.linalg.norm(obs_cache["cube_pos"][1] - self.table_full_size[1]/2),
+                        np.linalg.norm(obs_cache["cube_pos"][1] + self.table_full_size[1]/2)
                         )
                 return 0
+            
+            @sensor(modality=modality)
+            def cube_drop(obs_cache):
+                if "cube_pos" in obs_cache:
+                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < 0
 
-            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist, cube_to_bound_dist]
+            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist, cube_to_bound_dist, cube_drop]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):
