@@ -24,6 +24,9 @@ def weighted_mean(elite_scores, elite_weights, softmax_temp):
     weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
     return weighted_mean_score
 
+def mean(elite_weights):
+    return np.mean(elite_weights, axis=0)
+
 def sample_params(c_param, n_params):
     params = []
     if c_param != 0.0:
@@ -42,3 +45,13 @@ def same_best_weight(weights, rtol = 1e-02, atol= 1e-02):
         np.allclose(weights[i], weights[i + 1], rtol, atol)
         for i in range(len(weights) - 1)
         )
+
+import matplotlib.pyplot as plt
+
+def plot_learning_curve(x, scores, figure_file):
+    running_avg = np.zeros(len(scores))
+    for i in range(len(running_avg)):
+        running_avg[i] = np.mean(scores[max(0, i-100):(i+1)])
+    plt.plot(x, running_avg)
+    plt.title('Running average of previous 100 scores')
+    plt.savefig(figure_file)

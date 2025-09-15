@@ -1,3 +1,4 @@
+import spec
 import numpy as np
 from robosuite.models.arenas import TableArena   
 from robosuite.models.objects import BoxObject   
@@ -6,7 +7,6 @@ from robosuite.utils.mjcf_utils import CustomMaterial
 from robosuite.utils.observables import Observable, sensor   
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.environments.manipulation.single_arm_env import SingleArmEnv 
-import spec
 
 class Push(SingleArmEnv):
     def __init__(
@@ -16,7 +16,7 @@ class Push(SingleArmEnv):
         controller_configs=None,
         gripper_types="default",
         initialization_noise=None,
-        table_full_size=(0.8, 0.15, 0.05),
+        table_full_size=None,
         table_friction=(0.5, 5e-3, 1e-4),
         use_object_obs=True,
         use_camera_obs = False,
@@ -155,8 +155,8 @@ class Push(SingleArmEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube,
-                x_range=[0.0, 0.0],
-                y_range=[0.0, 0.0],
+                x_range=[0.00, -0.00],
+                y_range=[0.00, -0.00],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=True,
@@ -189,19 +189,7 @@ class Push(SingleArmEnv):
                 table_z = self.model.mujoco_arena.table_offset[2]
                 goal_pos =  np.array([self.goal_xy[0], self.goal_xy[1], table_z + 0.001], dtype=float)
                 return goal_pos
-
-            @sensor(modality=modality)
-            def eef_to_cube_dist(obs_cache):
-                if f"{pf}eef_pos" in obs_cache and "cube_pos" in obs_cache:
-                    return np.linalg.norm(obs_cache[f"{pf}eef_pos"] - obs_cache["cube_pos"])
-                return 0
-
-            @sensor(modality=modality)
-            def cube_to_goal_dist(obs_cache):
-                if "cube_pos" in obs_cache and "goal_pos" in obs_cache:
-                    return np.linalg.norm(obs_cache["goal_pos"] - obs_cache["cube_pos"])
-                return 0
-
+            
             @sensor(modality=modality)
             def cube_to_bound_dist(obs_cache):
                 if "cube_pos" in obs_cache:
@@ -212,11 +200,28 @@ class Push(SingleArmEnv):
                 return 0
             
             @sensor(modality=modality)
+            def eef_to_goal(obs_cache):
+                if f"{pf}eef_pos" in obs_cache and "cube_pos" in obs_cache:
+                    return obs_cache[f"{pf}eef_pos"] - obs_cache["goal_pos"]
+                return 0
+            @sensor(modality=modality)
+            def eef_to_cube(obs_cache):
+                if f"{pf}eef_pos" in obs_cache and "cube_pos" in obs_cache:
+                    return obs_cache[f"{pf}eef_pos"] - obs_cache["cube_pos"]
+                return 0
+
+            @sensor(modality=modality)
+            def cube_to_goal(obs_cache):
+                if "cube_pos" in obs_cache and "goal_pos" in obs_cache:
+                    return obs_cache["goal_pos"] - obs_cache["cube_pos"]
+                return 0
+        
+            @sensor(modality=modality)
             def cube_drop(obs_cache):
                 if "cube_pos" in obs_cache:
                     return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < 0
 
-            sensors = [cube_pos, goal_pos, eef_to_cube_dist, cube_to_goal_dist, cube_to_bound_dist, cube_drop]
+            sensors = [cube_pos, goal_pos, cube_to_bound_dist, cube_drop, eef_to_cube, cube_to_goal, eef_to_goal]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):

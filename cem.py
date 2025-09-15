@@ -5,20 +5,20 @@ from pathlib import Path
 
 def cem(
     agent,
-    n_training_iterations: int = 20,
+    n_training_iterations: int = 25,
     max_n_timesteps: int = 250,
     gamma: float = 0.99,
-    pop_size: int = 30,
+    pop_size: int = 50,
     elite_frac: float = 0.25,
     top_frac: float = 0.2,
-    sigma: float = 0.1,
-    alpha: float = 0.9,
-    beta: float = 0.25,
+    sigma: float = 0.05,
+    alpha: float = 0.5,
+    beta: float = 0.2,
     sigma_min: float = 1e-3,
-    pop_decay: float = 0.96,
+    pop_decay: float = 0.95,
     pop_min: int = 8,
     elite_min: int = 2,
-    init_param: float = 0.0,
+    init_param: float = 0.5,
     n_params: int = 3,
     update_factor: float = 0.1,
     pref_freq = 2,
@@ -100,12 +100,12 @@ def cem(
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
-        if i_iteration%pref_freq==0 and not utils.same_best_weight(best_weights_param):
+        """if i_iteration%pref_freq==0 and not utils.same_best_weight(best_weights_param):
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
-            best_param = params[best_index]
+            best_param = params[best_index]"""
 
-        c_param = c_param + update_factor*(best_param-c_param)
-        params = utils.sample_params(c_param, n_params)
+        #c_param = c_param + update_factor*(best_param-c_param)
+        # params = utils.sample_params(c_param, n_params)
 
         print(f"drops: {(drops)}")
         if i_iteration == n_training_iterations-1:

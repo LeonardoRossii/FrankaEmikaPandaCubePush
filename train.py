@@ -5,10 +5,12 @@ import utils
 import importlib
 from env import Push
 from agent import Agent
+from agent import NNAgent
 from pathlib import Path
 import robosuite as suite
+import sac
 
-generate_new_task_spec = True
+generate_new_task_spec = False
 if generate_new_task_spec:
     
     current_dir = Path(__file__).parent
@@ -29,6 +31,13 @@ if generate_new_task_spec:
 utils.register_environment(Push, "Push")
 controller = suite.load_controller_config(default_controller="OSC_POSE")
 
+table_x_width = 0.80
+table_y_width = 0.15
+table_z_width = 0.05
+table_full_size = (table_x_width,
+                   table_y_width,
+                   table_z_width)
+
 env = suite.make(
     "Push",
     robots="Panda",
@@ -38,10 +47,13 @@ env = suite.make(
     render_collision_mesh=False,
     use_camera_obs=False,
     render_camera=None,      
-    control_freq=25,          
+    control_freq=25,
+    table_full_size= table_full_size         
 )
 
 obs = env.reset()
-agent = Agent(env, env.action_dim)
-drops = cem.cem(agent, max_n_timesteps=250)
-print("Total drops:", drops)
+agent = NNAgent(env, env.action_dim)
+#drops = cem.cem(agent, max_n_timesteps=250)
+sac.sac(env, max_n_timesteps=250, start_steps=200, update_after=200, update_every=25, batch_size=128)
+
+#print("Total drops:", drops)
