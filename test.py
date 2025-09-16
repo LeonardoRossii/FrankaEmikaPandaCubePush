@@ -24,16 +24,16 @@ env = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    render_camera="sideview",      
+    render_camera="frontview",      
     control_freq=25,   
     table_full_size = table_full_size,  
 )
 
 obs = env.reset()
 
-agent = NNAgent(env, env.action_dim)
+agent = Agent(env, env.action_dim)
 sfae_filter = Filter(env)
-agent.set_weights(np.loadtxt("theta.txt"))
+agent.set_weights(np.loadtxt("iota.txt"))
 
 for step in range(250):
     state = agent.get_state(obs)

@@ -52,8 +52,6 @@ env = suite.make(
 )
 
 obs = env.reset()
-agent = NNAgent(env, env.action_dim)
-#drops = cem.cem(agent, max_n_timesteps=250)
-sac.sac(env, max_n_timesteps=250, start_steps=200, update_after=200, update_every=25, batch_size=128)
-
-#print("Total drops:", drops)
+agent = Agent(env, env.action_dim)
+drops = cem.cem(agent, max_n_timesteps=250)
+print("Total drops:", drops)

@@ -10,14 +10,6 @@ import utils
 from utils import plot_learning_curve
 
 
-def flatten_obs(obs_dict):
-    parts = []
-    for k, v in obs_dict.items():
-        if isinstance(v, np.ndarray):
-            parts.append(v.ravel())
-    return np.concatenate(parts, axis=0).astype(np.float32)
-
-
 def scale_action(agent_action, low, high):
     agent_action = np.clip(agent_action, -1.0, 1.0)
     return low + 0.5 * (agent_action + 1.0) * (high - low)
@@ -56,7 +48,7 @@ if __name__ == "__main__":
         n_actions=n_actions,
     )
 
-    max_n_timesteps = 1000
+    max_n_timesteps = 250
     episodes = 1000
     filename = "robosuite_push_panda.png"
     figure_file = os.path.join("plots", filename)

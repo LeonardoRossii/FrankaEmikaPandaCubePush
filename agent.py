@@ -8,7 +8,7 @@ import torch.nn.functional as F
 class Agent():
     def __init__(self, env, output_size):
         self.env = env
-        self.input_size = 6
+        self.input_size = 9
         self.output_size = output_size
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
@@ -17,11 +17,11 @@ class Agent():
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]           
         cube_to_goal = obs["cube_to_goal"] 
-
+        eef_to_goal = obs["eef_to_goal"]
         state = np.concatenate([
             eef_to_cube,
-            cube_to_goal
-        ])
+            cube_to_goal,
+            eef_to_goal])
         return state
 
     def set_weights(self, weights):
@@ -81,7 +81,7 @@ class Agent():
         return metrics
     
 class NNAgent():
-    def __init__(self, env, output_size, hidden_sizes=(32,)):
+    def __init__(self, env, output_size, hidden_sizes=(256,)):
         self.env = env
         self.input_size = 9
         self.output_size = output_size
@@ -92,7 +92,7 @@ class NNAgent():
         in_dim = self.input_size
         for h in hidden_sizes:
             layers.append(nn.Linear(in_dim, h))
-            layers.append(nn.Tanh())
+            layers.append(nn.ReLU(inplace=True))
             in_dim = h
         layers.append(nn.Linear(in_dim, output_size))
         self.model = nn.Sequential(*layers)

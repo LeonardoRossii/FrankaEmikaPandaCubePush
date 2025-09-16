@@ -12,7 +12,7 @@ def strip_code(code_str):
         lines = lines[:-1]
     return "\n".join(lines)
 
-def weighted_mean(elite_scores, elite_weights, softmax_temp):
+def weighted_mean(elite_scores, elite_weights, softmax_temp, w_max = 0.5):
     shift = elite_scores.max()
     logits = (elite_scores - shift) / max(1e-8, softmax_temp)
     w = np.exp(logits)
@@ -21,6 +21,10 @@ def weighted_mean(elite_scores, elite_weights, softmax_temp):
         w = np.ones_like(elite_scores) / len(elite_scores)
     else:
         w /= w_sum
+    
+    if w.max() > w_max:
+        w = np.clip(w, None, w_max)
+        w /= w.sum()  # re-normalize to sum to 1
     weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
     return weighted_mean_score
 

@@ -155,11 +155,11 @@ class Push(SingleArmEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube,
-                x_range=[0.00, -0.00],
-                y_range=[0.00, -0.00],
+                x_range=[-0.025, 0.025],
+                y_range=[-0.025, 0.025],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
-                ensure_valid_placement=True,
+                ensure_valid_placement=False,
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )

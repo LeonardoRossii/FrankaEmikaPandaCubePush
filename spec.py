@@ -25,8 +25,8 @@ def get_reward(env, action, params):
         reward = param * reward + (1 - param) * IE_reward
 
         if env.check_success():
-            max_rewards_bonuses = 2.5
-            reward += max_rewards_bonuses*10
+            max_rewards_bonuses = 3
+            reward += 10 * env.horizon * max_rewards_bonuses
 
         rewards.append(reward)
     return rewards

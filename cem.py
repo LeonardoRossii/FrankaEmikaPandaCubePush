@@ -5,15 +5,17 @@ from pathlib import Path
 
 def cem(
     agent,
-    n_training_iterations: int = 25,
+    n_training_iterations: int = 30,
+    checkpoint_iterations = 10,
     max_n_timesteps: int = 250,
+    random_seeds: int = 3,
     gamma: float = 0.99,
     pop_size: int = 50,
-    elite_frac: float = 0.25,
+    elite_frac: float = 0.1,
     top_frac: float = 0.2,
-    sigma: float = 0.05,
-    alpha: float = 0.5,
-    beta: float = 0.2,
+    sigma: float = 1,
+    alpha: float = 0.6,
+    beta: float = 0.25,
     sigma_min: float = 1e-3,
     pop_decay: float = 0.95,
     pop_min: int = 8,
@@ -66,9 +68,11 @@ def cem(
             weights_pop.append(w)
 
         for i, weight in enumerate(weights_pop):
-
-            k_returns, drop = agent.evaluate(weight, params, max_n_timesteps, gamma)
-            drops += int(drop)
+            k_returns = [float('inf')] * len(params)
+            for seed in range(random_seeds):
+                k_returns_seed, _ = agent.evaluate(weight, params, max_n_timesteps, gamma)
+                for n_seed in range(len(params)):
+                    k_returns[n_seed] = min(k_returns[n_seed], k_returns_seed[n_seed])
             
             for j, k_ret in enumerate(k_returns):
                 if k_ret > best_returns_param[j]:
@@ -108,7 +112,7 @@ def cem(
         # params = utils.sample_params(c_param, n_params)
 
         print(f"drops: {(drops)}")
-        if i_iteration == n_training_iterations-1:
+        if i_iteration%checkpoint_iterations:
             np.savetxt('theta.txt', best_weight)
     
     return drops
