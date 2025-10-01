@@ -14,7 +14,6 @@ class Filter:
             action = np.zeros(dim)
         return action
     
-
 class FilterCBF:
     def __init__(self, env, alpha=0.5):
         self.env = env

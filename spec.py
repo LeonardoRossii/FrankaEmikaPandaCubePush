@@ -8,25 +8,26 @@ def get_reward(env, action, params):
         eef_pos = env.get_eef_pos()
         cube_pos = env.get_cube_pos()
         goal_pos = env.get_goal_pos()
-        
-        eef_to_cube_dist = np.linalg.norm(eef_pos - cube_pos)
-        cube_to_goal_dist = np.linalg.norm(cube_pos - goal_pos)
 
-        reward += 1.0 - eef_to_cube_dist
-        reward += 1.0 - cube_to_goal_dist
+        eef_cube_dist = np.linalg.norm(eef_pos - cube_pos)
+        cube_goal_dist = np.linalg.norm(cube_pos - goal_pos)
+        cube_bound_dist = env.get_cube_bound_dist()
 
-        if env.check_contact_cube():
-            reward += 1        
+        reward += 1.0 / (eef_cube_dist + 1e-3)
+        reward += 1.0 / (cube_goal_dist + 1e-3)
+        reward += 0.1 * cube_bound_dist
+
+        if env.check_contact_finger_1_cube() or env.check_contact_finger_2_cube():
+            reward += 0.5
 
         if env.check_contact_table():
-            reward -= 0.05
+            reward -= 0.01
 
-        IE_reward = 0
+        max_rewards_bonuses = 1.0 / 0.04 + 1.0 / 0.04 + 0.1 * env.table_full_size[1] / 2
+        reward += 10 * env.horizon * max_rewards_bonuses * int(env.check_success())
+
+        IE_reward = 0.1 * cube_bound_dist
         reward = param * reward + (1 - param) * IE_reward
-
-        if env.check_success():
-            max_rewards_bonuses = 3
-            reward += 10 * env.horizon * max_rewards_bonuses
 
         rewards.append(reward)
     return rewards

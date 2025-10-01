@@ -6,24 +6,22 @@ from pathlib import Path
 def cem(
     agent,
     n_training_iterations: int = 30,
-    checkpoint_iterations = 10,
+    checkpoint_iterations = 2,
     max_n_timesteps: int = 250,
-    random_seeds: int = 3,
+    randoms: int = 1,
     gamma: float = 0.99,
-    pop_size: int = 50,
-    elite_frac: float = 0.1,
+    pop_size: int = 30,
+    elite_frac: float = 0.2,
     top_frac: float = 0.2,
-    sigma: float = 1,
+    sigma: float = 0.8,
     alpha: float = 0.6,
-    beta: float = 0.25,
-    sigma_min: float = 1e-3,
-    pop_decay: float = 0.95,
+    beta: float = 0.2,
+    sigma_min: float = 1e-4,
+    pop_decay: float = 0.97,
     pop_min: int = 8,
     elite_min: int = 2,
     init_param: float = 0.5,
     n_params: int = 3,
-    update_factor: float = 0.1,
-    pref_freq = 2,
 ):  
     current_dir = Path(__file__).parent
     file_task_description_path = current_dir / "pmptpref.txt"
@@ -69,7 +67,7 @@ def cem(
 
         for i, weight in enumerate(weights_pop):
             k_returns = [float('inf')] * len(params)
-            for seed in range(random_seeds):
+            for random in range(randoms):
                 k_returns_seed, _ = agent.evaluate(weight, params, max_n_timesteps, gamma)
                 for n_seed in range(len(params)):
                     k_returns[n_seed] = min(k_returns[n_seed], k_returns_seed[n_seed])
@@ -108,11 +106,11 @@ def cem(
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
             best_param = params[best_index]"""
 
-        #c_param = c_param + update_factor*(best_param-c_param)
+        # c_param = c_param + update_factor*(best_param-c_param)
         # params = utils.sample_params(c_param, n_params)
 
         print(f"drops: {(drops)}")
-        if i_iteration%checkpoint_iterations:
+        if i_iteration == n_training_iterations-1 or i_iteration%checkpoint_iterations==0:
             np.savetxt('theta.txt', best_weight)
     
     return drops

@@ -24,7 +24,7 @@ env = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    render_camera="frontview",      
+    render_camera="sideview",      
     control_freq=25,   
     table_full_size = table_full_size,  
 )
@@ -33,7 +33,7 @@ obs = env.reset()
 
 agent = Agent(env, env.action_dim)
 sfae_filter = Filter(env)
-agent.set_weights(np.loadtxt("iota.txt"))
+agent.set_weights(np.loadtxt("theta.txt"))
 
 for step in range(250):
     state = agent.get_state(obs)

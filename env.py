@@ -50,6 +50,8 @@ class Push(SingleArmEnv):
 
         self.table_offset = np.array((0, 0, 0.95))
         self.goal_pos_offset = np.array([0.2, 0])
+        self._last_obj_goal_dist =  0.2
+        self._last_eef_cube_dist = 0.5
 
         super().__init__(
             robots=robots,
@@ -77,6 +79,16 @@ class Push(SingleArmEnv):
             renderer=renderer,
             renderer_config=renderer_config,
         )
+
+    def set_last_obj_goal_dist(self):
+        self._last_obj_goal_dist = np.linalg.norm(self.get_cube_pos() - self.get_goal_pos())
+    
+    def set_last_eef_cube_dist(self):
+        self._last_eef_cube_dist = np.linalg.norm(self.get_eef_pos() - self.get_cube_pos())
+
+    def update(self):
+        self.set_last_obj_goal_dist()
+        self.set_last_eef_cube_dist()
 
     def reward(self, action=None, param = None):
         return spec.get_reward(self, action, param)
@@ -111,15 +123,29 @@ class Push(SingleArmEnv):
                 table_contact= True
         return table_contact
     
-    def check_contact_cube(self):
-        cube_contact = False
+    def check_contact_finger_1_cube(self):
+        contact_ = False
         for contact in self.sim.data.contact:
             geom1 = self.sim.model.geom_id2name(contact.geom1)
             geom2 = self.sim.model.geom_id2name(contact.geom2)
-            if ("cube_g0" in geom1 or "cube_g0" in geom2) and ("gripper0_finger1_collision" in geom1 or "gripper0_finger1_collision" in geom2 or "gripper0_finger2_collision" in geom1 or "gripper0_finger2_collision" in geom2):
-                cube_contact= True
-        return cube_contact
-
+            cube_id = "cube_g0"
+            finger_1_id = "gripper0_finger1_collision"
+            if(cube_id in geom1 or cube_id in geom2) and (finger_1_id in geom1 or finger_1_id in geom2):
+                contact_ = True
+                break
+        return contact_
+        
+    def check_contact_finger_2_cube(self):
+        contact_ = False
+        for contact in self.sim.data.contact:
+            geom1 = self.sim.model.geom_id2name(contact.geom1)
+            geom2 = self.sim.model.geom_id2name(contact.geom2)
+            cube_id = "cube_g0"
+            finger_1_id = "gripper0_finger2_collision"
+            if(cube_id in geom1 or cube_id in geom2) and (finger_1_id in geom1 or finger_1_id in geom2):
+                contact_ = True
+                break
+        return contact_
 
     def _load_model(self):
         super()._load_model()
@@ -155,8 +181,8 @@ class Push(SingleArmEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube,
-                x_range=[-0.025, 0.025],
-                y_range=[-0.025, 0.025],
+                x_range=[-0.00, 0.00],
+                y_range=[-0.00, 0.00],
                 rotation=0,
                 ensure_object_boundary_in_range=False,
                 ensure_valid_placement=False,
@@ -221,7 +247,11 @@ class Push(SingleArmEnv):
                 if "cube_pos" in obs_cache:
                     return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < 0
 
-            sensors = [cube_pos, goal_pos, cube_to_bound_dist, cube_drop, eef_to_cube, cube_to_goal, eef_to_goal]
+            @sensor(modality=modality)
+            def cube_quat(obs_cache):
+                return self.sim.data.body_xquat[self.cube_body_id].copy()
+
+            sensors = [cube_pos, goal_pos, cube_to_bound_dist, cube_drop, eef_to_cube, cube_to_goal, eef_to_goal, cube_quat]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):
