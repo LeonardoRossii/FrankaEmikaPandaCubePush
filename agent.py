@@ -43,7 +43,7 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(action)
+            #action = self.safe_filter.apply(action)
             obs, rewards, _, _, = self.env.step(action, params)
             self.env.update()
             for i in range(len(rewards)):
@@ -65,7 +65,7 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(action)
+            #action = self.safe_filter.apply(action)
             obs, _, done, _, = self.env.step(action, param)
 
             if t%10==0:

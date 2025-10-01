@@ -1,9 +1,7 @@
 import numpy as np
 import utils
 from agent import Agent
-from agent import NNAgent
 from filters import Filter
-from filters import FilterCBF
 import robosuite as suite
 from env import Push
 
@@ -33,7 +31,7 @@ obs = env.reset()
 
 agent = Agent(env, env.action_dim)
 sfae_filter = Filter(env)
-agent.set_weights(np.loadtxt("theta.txt"))
+agent.set_weights(np.loadtxt("theta_drop.txt"))
 
 for step in range(250):
     state = agent.get_state(obs)

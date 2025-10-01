@@ -6,14 +6,13 @@ from pathlib import Path
 def cem(
     agent,
     n_training_iterations: int = 30,
-    checkpoint_iterations = 2,
     max_n_timesteps: int = 250,
     randoms: int = 1,
     gamma: float = 0.99,
     pop_size: int = 30,
     elite_frac: float = 0.2,
     top_frac: float = 0.2,
-    sigma: float = 0.8,
+    sigma: float = 0.5,
     alpha: float = 0.6,
     beta: float = 0.2,
     sigma_min: float = 1e-4,
@@ -28,6 +27,7 @@ def cem(
     with open(file_task_description_path, "r") as file:
         prompt = file.read().strip()
 
+    update_factor = 0.15
     c_param = init_param
     best_param = c_param
     params = utils.sample_params(c_param, n_params)
@@ -45,6 +45,8 @@ def cem(
         for _ in range(n_top)
     ]
 
+    c_param_vec = []
+    drops_vec = []
     drops = 0
 
     for i_iteration in range(0, n_training_iterations):
@@ -68,7 +70,10 @@ def cem(
         for i, weight in enumerate(weights_pop):
             k_returns = [float('inf')] * len(params)
             for random in range(randoms):
-                k_returns_seed, _ = agent.evaluate(weight, params, max_n_timesteps, gamma)
+                k_returns_seed, drop = agent.evaluate(weight, params, max_n_timesteps, gamma)
+                drops += drop
+                if drop ==1:
+                     np.savetxt('theta_drop.txt', weight)
                 for n_seed in range(len(params)):
                     k_returns[n_seed] = min(k_returns[n_seed], k_returns_seed[n_seed])
             
@@ -76,7 +81,8 @@ def cem(
                 if k_ret > best_returns_param[j]:
                     best_returns_param[j] = k_ret
                     best_weights_param[j] = weight
-            
+
+            drops_vec.append(drops)
             returns.append(k_returns[-1])
             print(f"return {i}: {(k_returns[-1])}")
 
@@ -102,15 +108,16 @@ def cem(
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
-        """if i_iteration%pref_freq==0 and not utils.same_best_weight(best_weights_param):
+        """if (i_iteration ==0 or i_iteration%2==0 )and not utils.same_best_weight(best_weights_param):
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
-            best_param = params[best_index]"""
+            best_param = params[best_index]
 
-        # c_param = c_param + update_factor*(best_param-c_param)
-        # params = utils.sample_params(c_param, n_params)
+        c_param = c_param + update_factor*(best_param-c_param)
+        c_param_vec.append(c_param)
+        params = utils.sample_params(c_param, n_params)"""
+        c_param_vec.append(1.0)
 
-        print(f"drops: {(drops)}")
-        if i_iteration == n_training_iterations-1 or i_iteration%checkpoint_iterations==0:
-            np.savetxt('theta.txt', best_weight)
+        print(f"drops: {(drops)}")    
+        np.savetxt('theta.txt', best_weight)
     
-    return drops
+    return drops, drops_vec, c_param_vec

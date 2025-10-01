@@ -5,11 +5,11 @@ import utils
 import importlib
 from env import Push
 from agent import Agent
-from agent import NNAgent
 from pathlib import Path
 import robosuite as suite
+import matplotlib.pyplot as plt
 
-generate_new_task_spec = True
+generate_new_task_spec = False
 if generate_new_task_spec:
     
     current_dir = Path(__file__).parent
@@ -52,5 +52,21 @@ env = suite.make(
 
 obs = env.reset()
 agent = Agent(env, env.action_dim)
-drops = cem.cem(agent, max_n_timesteps=250)
+drops, drops_vec, lambda_vec = cem.cem(agent, max_n_timesteps=250)
+
+
 print("Total drops:", drops)
+
+plt.plot(drops_vec, marker='o', linestyle='-', color='b')
+plt.title("Cumulative drops")
+plt.xlabel("Episodes")
+plt.ylabel("Value")
+plt.grid(True)
+plt.show()
+
+plt.plot(lambda_vec, marker='o', linestyle='-', color='b')
+plt.title("Lambda")
+plt.xlabel("CEM iteration")
+plt.ylabel("Value")
+plt.grid(True)
+plt.show()
