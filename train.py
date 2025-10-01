@@ -9,7 +9,7 @@ from pathlib import Path
 import robosuite as suite
 import matplotlib.pyplot as plt
 
-generate_new_task_spec = False
+generate_new_task_spec = True
 if generate_new_task_spec:
     
     current_dir = Path(__file__).parent

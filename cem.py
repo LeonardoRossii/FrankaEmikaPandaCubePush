@@ -19,7 +19,7 @@ def cem(
     pop_decay: float = 0.97,
     pop_min: int = 8,
     elite_min: int = 2,
-    init_param: float = 0.5,
+    init_param: float = 0.0,
     n_params: int = 3,
 ):  
     current_dir = Path(__file__).parent
@@ -108,13 +108,13 @@ def cem(
     
         pop_size = max(pop_min, int(round(pop_size * pop_decay)))
 
-        """if (i_iteration ==0 or i_iteration%2==0 )and not utils.same_best_weight(best_weights_param):
+        if (i_iteration ==0 or i_iteration%2==0 )and not utils.same_best_weight(best_weights_param):
             best_index = llm.get_preference(agent, best_weights_param, 250, prompt)
             best_param = params[best_index]
 
         c_param = c_param + update_factor*(best_param-c_param)
         c_param_vec.append(c_param)
-        params = utils.sample_params(c_param, n_params)"""
+        params = utils.sample_params(c_param, n_params)
         c_param_vec.append(1.0)
 
         print(f"drops: {(drops)}")    
