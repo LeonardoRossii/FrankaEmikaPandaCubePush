@@ -6,7 +6,7 @@ Your goal is to write:
 - A success condition function for the environment to define if the task is successfully achieved.
 - A failure condition function for the environment to define if the task is failed.
 You must write a Python:
-- Dense reward function get_reward(env, action, params) that returns (reward: float) importing all the necessary libraries.
+- Dense reward function get_reward(env,_) that returns (reward: float) importing all the necessary libraries.
 - Function get_success_condition(env) that returns (success: bool)
 - Function get_failure_condition(env) that returns (failure: bool)
 Return only the executable Python function code without wrapping it in markdown backticks, namely not writing ```python and ```  respectively at the first and last lines. 
@@ -39,17 +39,14 @@ FORMALIZATION:
 - Exactly define: reward += 10 * env.horizon * max_rewards_bonuses * int(env.check_success(env))
 2. Final Reward
 - The general reward function must be a convex combination between the Task associated terms and the Irreversible Event term
-- reward = param*(reward) + (1-param)*IE_reward
+- reward = lambda*(reward) + (1-lambda)*IE_reward
 
 STRUCTURE:
-def get_reward(env, action, params):
-  rewards = []
-  for param in params:
-    reward = 0
-    # Compute reward terms
-    # Compute reward
-    rewards.append(reward)
-  return rewards
+def get_reward(env,_):
+  lambda = 0.5
+  reward = 0
+  # Compute reward function shaping terms
+  return reward
 
 def get_success_condition(env):
     return success

@@ -1,60 +1,75 @@
 import re
-import os
-import spec
 import utils
-import json
-import inspect
-from pathlib import Path
 from openai import OpenAI
+import importlib
+import spec
+from pathlib import Path
+import inspect
 
-def generate_spec(
-    prompt: str,
-    reward_file_path: str = Path(inspect.getfile(spec)),
-    model: str = "gpt-4o",
-    temperature: float = 0.0
+class GPT:
+    def __init__(
+        self,
+        client: OpenAI,
+        model: str = "gpt-4o",
+        temperature: float = 0.0,
     ):
+        self.client = client
+        self.model = model
+        self.temperature = temperature
+        self.input_prompt_reward = None
+        self.input_prompt_prefer = None
+        self.output_reward_path = None
 
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    if not client.api_key:
-        raise RuntimeError("OPENAI_API_KEY not set")
+    def build_reward_prompt(self):
+        current_dir = Path(__file__).parent
+        file_task_description_path = current_dir / "prompts" / "reward.txt"
+        with open(file_task_description_path, "r") as file:
+            reward_prompt = file.read().strip()
+        file_environment_class_path = current_dir / "env.py"
+        with open(file_environment_class_path, "r") as file:
+            env_class = file.read().strip()
+        reward_prompt += "\n\n# Environment class: \n" + env_class
+        self.input_prompt_reward = reward_prompt
+        
+    def generate_reward(self):
+        self.build_reward_prompt()
+        try:
+            response = self.client.responses.create(
+                model=self.model,
+                input=self.input_prompt_reward,
+                temperature=self.temperature,
+            )
+        except Exception as err:
+            raise RuntimeError(f"OpenAI call failed: {err}")
+        
+        content = response.output_text
+        content = utils.strip_code(content)
+        
+        with open(Path(inspect.getfile(spec)), "w") as f:
+            f.write(content)
+        importlib.reload(spec)
     
-    try:
-        response = client.responses.create(
-            model=model,
-            input=prompt,
-            temperature=temperature,
-        )
-    except Exception as err:
-        raise RuntimeError(f"OpenAI call failed: {err}")
-    
-    content = response.output_text
-    content = utils.strip_code(content)
-    
-    with open(reward_file_path, "w") as f:
-        f.write(content)
+    def build_preference_prompt(self):
+        current_dir = Path(__file__).parent
+        file_task_description_path = current_dir / "prompts" / "feedback.txt"
+        with open(file_task_description_path, "r") as file:
+            preference_prompt = file.read().strip()
+        self.input_prompt_prefer = preference_prompt
 
+    def generate_preference(self, trajdesc):
+        self.build_preference_prompt()
+        try:
+            response = self.client.responses.create(
+                model=self.model,
+                input=f"{self.input_prompt_prefer}\n\nTrajectories:\n{trajdesc}",
+                temperature=self.temperature
+            )
+        except Exception as err:
+            raise RuntimeError(f"OpenAI call failed: {err}")
 
-def get_preference(agent, weights, max_n_timesteps, prompt):
-
-    client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
-    if not client.api_key:
-        raise RuntimeError("OPENAI_API_KEY not set")
-
-    trajs = [agent.episode(weight, max_n_timesteps) for weight in weights]
-    tdesc = "\n\n".join(f"Trajectory {i}:\n{json.dumps(t, indent=2)}" for i, t in enumerate(trajs))
-    prompt = f"{prompt.rstrip()}\n\nTrajectories:\n{tdesc}"
-    try:
-        response = client.responses.create(
-            model = "gpt-4o",
-            input = prompt,
-            temperature = 0.0
-        )
-    except Exception as err:
-        raise RuntimeError(f"OpenAI call failed: {err}")
-
-    answ = response.output_text
-    match = re.search(r"idx\s*=\s*(\d+)", answ)
-    if match:
-        idx = int(match.group(1))
-
-    return idx
+        answ = response.output_text
+        print(answ)
+        match = re.search(r"idx\s*=\s*(\d+)", answ)
+        if match:
+            idx = int(match.group(1))
+            return idx

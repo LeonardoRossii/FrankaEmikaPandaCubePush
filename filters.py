@@ -61,8 +61,7 @@ class FilterCBF:
         nom = act[:2]
         
         pos = self.env.get_cube_pos()[:2]
-        # pos = self.env.sim.data.site_xpos[self.env.robots[0].eef_site_id][:2]
-
+        
         d_to_min = np.array([pos[0] - self.xmin, pos[1] - self.ymin])
         d_to_max = np.array([self.xmax - pos[0], self.ymax - pos[1]])
         

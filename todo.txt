@@ -1,2 +1,0 @@
-Constrain the z, roll, yaw, pitch in CBF
-Implement human preference.

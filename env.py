@@ -16,7 +16,7 @@ class Push(SingleArmEnv):
         controller_configs=None,
         gripper_types="default",
         initialization_noise=None,
-        table_full_size=None,
+        table_full_size= (0.8, 0.15, 0.05),
         table_friction=(0.5, 5e-3, 1e-4),
         use_object_obs=True,
         use_camera_obs = False,
@@ -83,7 +83,7 @@ class Push(SingleArmEnv):
         )
 
     def reward(self, action=None, param = None):
-        return spec.get_reward(self, action, param)
+        return spec.get_reward(self, action)
     
     def check_success(self):
         return spec.get_success_condition(self)
@@ -279,6 +279,7 @@ class Push(SingleArmEnv):
         self.sim.forward()
         cube_pos = self.sim.data.body_xpos[self.cube_body_id]
         self._last_obj_goal_dist = np.linalg.norm(cube_pos[:2] - self.goal_xy)
+        self.safety_filter_effort = 0.0
 
     def visualize(self, vis_settings):
         super().visualize(vis_settings=vis_settings)
