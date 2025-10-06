@@ -53,6 +53,8 @@ class Push(SingleArmEnv):
         self._last_obj_goal_dist =  0.2
         self._last_eef_cube_dist = 0.5
 
+        self.safety_filter_effort = 0.0
+
         super().__init__(
             robots=robots,
             env_configuration=env_configuration,
@@ -79,16 +81,6 @@ class Push(SingleArmEnv):
             renderer=renderer,
             renderer_config=renderer_config,
         )
-
-    def set_last_obj_goal_dist(self):
-        self._last_obj_goal_dist = np.linalg.norm(self.get_cube_pos() - self.get_goal_pos())
-    
-    def set_last_eef_cube_dist(self):
-        self._last_eef_cube_dist = np.linalg.norm(self.get_eef_pos() - self.get_cube_pos())
-
-    def update(self):
-        self.set_last_obj_goal_dist()
-        self.set_last_eef_cube_dist()
 
     def reward(self, action=None, param = None):
         return spec.get_reward(self, action, param)

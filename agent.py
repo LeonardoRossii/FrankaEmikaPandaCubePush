@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from filters import Filter
+from filters import FilterCBF
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +13,8 @@ class Agent():
         self.output_size = output_size
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
-        self.safe_filter = Filter(self.env)
+        #self.safe_filter = Filter(self.env)
+        self.safe_filter = FilterCBF(self.env)
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]           
@@ -45,7 +47,6 @@ class Agent():
             action = self.forward(state)
             action = self.safe_filter.apply(action)
             obs, rewards, _, _, = self.env.step(action, params)
-            self.env.update()
             for i in range(len(rewards)):
                 episode_returns[i] += rewards[i] * math.pow(gamma, t)
             if self.env.check_success() or self.env.check_failure():

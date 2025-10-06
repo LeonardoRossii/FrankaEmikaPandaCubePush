@@ -9,7 +9,7 @@ from pathlib import Path
 import robosuite as suite
 import matplotlib.pyplot as plt
 
-generate_new_task_spec = True
+generate_new_task_spec = False
 if generate_new_task_spec:
     
     current_dir = Path(__file__).parent
@@ -47,7 +47,8 @@ env = suite.make(
     use_camera_obs=False,
     render_camera=None,      
     control_freq=25,
-    table_full_size= table_full_size         
+    table_full_size= table_full_size,
+    horizon = 250      
 )
 
 obs = env.reset()

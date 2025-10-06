@@ -6,6 +6,7 @@ class Filter:
     def __init__(self, env):
         self.env = env
         self.min = 0.03
+        self.effort = 0.0
 
     def apply(self, action):
         dist = self.env.get_cube_bound_dist()
@@ -15,16 +16,22 @@ class Filter:
         return action
     
 class FilterCBF:
-    def __init__(self, env, alpha=0.5):
+    def __init__(self, env, alpha=1.0):
         self.env = env
         self.alpha = float(alpha)
 
-        self.dt = env.control_freq
+        self.dt = 1.0/env.control_freq
 
         half_x = float(self.env.table_full_size[0]) / 2.0
         half_y = float(self.env.table_full_size[1]) / 2.0
-        self.xmin, self.xmax = -half_x, +half_x
-        self.ymin, self.ymax = -half_y, +half_y
+
+        safe_margin = 0.1*half_x
+        
+        self.xmin, self.xmax = -half_x+safe_margin, +half_x-safe_margin
+        self.ymin, self.ymax = -half_y+safe_margin, +half_y-safe_margin
+
+        self.xspan = self.xmax - self.xmin
+        self.yspan = self.ymax - self.ymin
 
         self.n = 2
 
@@ -43,19 +50,33 @@ class FilterCBF:
         self.pos = None
         self._last_x = np.zeros(self.n)
 
+    def step(self, dist, span):
+        s = np.clip(dist / max(span, 1e-9), 0.0, 1.0)
+        step = np.tanh(self.alpha * s)              
+        return min(step, dist)
+    
     def apply(self, action):
         
-        nom = action[:2]         
+        act = action.copy()
+        nom = act[:2]
         
         pos = self.env.get_cube_pos()[:2]
+        # pos = self.env.sim.data.site_xpos[self.env.robots[0].eef_site_id][:2]
 
-        bmin = np.array([self.xmin, self.ymin])
-        bmax = np.array([self.xmax, self.ymax])
+        d_to_min = np.array([pos[0] - self.xmin, pos[1] - self.ymin])
+        d_to_max = np.array([self.xmax - pos[0], self.ymax - pos[1]])
+        
+        spans = np.array([(self.xmax - self.xmin)/2, (self.ymax - self.ymin)/2])
 
-        lo = -self.alpha * self.dt * (pos - bmin)
-        hi =  self.alpha * self.dt * (bmax - pos)
+        lo = np.zeros(2)
+        hi = np.zeros(2)
 
+        for i in range(2):
+            hi[i] =  self.step(d_to_max[i], spans[i])
+            lo[i] = -self.step(d_to_min[i], spans[i])
+    
         q = -nom
+
         self._solver.update(q=q, l=lo, u=hi)
         self._solver.warm_start(x=self._last_x)
         res = self._solver.solve()
@@ -64,8 +85,10 @@ class FilterCBF:
             d_safe = res.x
         else:
             d_safe = np.zeros(self.n + 1) 
-        
+
         self._last_x = d_safe
 
-        action[:2] = d_safe
-        return action
+        self.env.safety_filter_effort = np.linalg.norm(action[:2] - d_safe)
+
+        act[:2] = d_safe
+        return act
