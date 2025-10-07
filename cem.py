@@ -44,9 +44,8 @@ class CEM:
         self.n_top = None
         
     def init(self):
-        #self.llm.generate_ie_with_image()
-        #if self.grf: self.llm.generate_reward()
-        
+        self.llm.generate_ie_with_image()
+        if self.grf: self.llm.generate_reward()
         self.weight_dim = self.agent.get_weights_dim()
         init_best_weight = 0 * np.random.randn(self.weight_dim)
         self.mean_weight = init_best_weight

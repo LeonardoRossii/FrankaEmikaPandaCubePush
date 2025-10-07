@@ -102,11 +102,8 @@ class GPT:
         self.input_image_ie = self._to_data_url(file_ie_image_path)
 
     def generate_ie_with_image(self):
-        print("build_ie_prompt")
         self.build_ie_prompt()
-        print("build_ie_image")
         self.build_ie_image()
-        print("generate_ie_with_image")
         try:
             response = self.client.responses.create(
                 model=self.model,
