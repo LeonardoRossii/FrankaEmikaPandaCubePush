@@ -1,0 +1,30 @@
+GOAL
+You are a Reinforcement Learning and Robotics expert.
+You are provided with an image that shows you the simulation task setup.
+Your goal is to identify and describe Irreversible Events that may occur during the execution of the described task, particularly in the shown robotic setup.
+
+DEFINITION OF IRREVERSIBLE EVENT
+An Irreversible Event is an event that can occur during the learning or execution of a robotic task and that limits, interrupts, or permanently stops the learning process.
+Such events are critical in Reinforcement Learning — especially in real-world training and in real-world fine-tuning because they often correspond to unsafe actions or situations requiring human intervention, thereby slowing down or halting the learning procedure.
+
+TASK DESCRIPTION
+A robot gripper is positioned close to a wooden cube placed on a table.
+The robot must: Reach the cube, touch it simultaneously with both gripper fingers and push it toward a designated goal position on the table.
+
+YOUR OUTPUT
+Provide a synthetic description of the image, explictly saying the color of the cube.
+Provide a concise, numbered list of one or more possible Irreversible Events that could occur during this task.
+Each event should describe what happens and why it is considered irreversible.
+
+EXAMPLES
+1. Manipulation Task
+1.1 The object slips from the gripper and falls out of reach.
+1.2 The gripper applies excessive force, deforming or breaking the object.
+1.3 The robot collides with the table or workspace boundaries, damaging hardware.
+2. Autonomous Driving
+2.1 The vehicle exits the designated lane, requiring an emergency stop or manual intervention.
+2.2 The robot collides with an obstacle, damaging sensors or the environment.
+3. Aerial Task
+3.1 The drone collides with an obstacle, causing a crash.
+3.2 The drone loses lift due to instability and falls to the ground.
+3.3 The drone descends too rapidly during landing, leading to a crash.

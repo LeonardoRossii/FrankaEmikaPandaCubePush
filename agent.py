@@ -28,14 +28,16 @@ class Agent():
     def forward(self, x):
         return np.dot(self.A, x) + self.b
 
-    def evaluate(self, weights, max_n_timesteps, gamma=0.99, render = False):
+    def evaluate(self, weights, max_n_timesteps, gamma=0.99, render = False, fixed_action = False):
         self.set_weights(weights)
         obs= self.env.reset()
         state = self.get_state(obs)
         episode_return = 0
+        action = np.zeros(self.env.action_dim)
         for t in range(max_n_timesteps):
-            state = self.get_state(obs)
-            action = self.forward(state)
+            if not fixed_action:
+                state = self.get_state(obs)
+                action = self.forward(state)
             action = self.safe_filter.apply(action)
             obs, rewards, _, _, = self.env.step(action, [0])
             episode_return += rewards * math.pow(gamma, t)

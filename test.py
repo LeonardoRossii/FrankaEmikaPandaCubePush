@@ -4,6 +4,7 @@ from agent import Agent
 from filters import FilterCBF
 import robosuite as suite
 from env import Push
+from pathlib import Path
 
 utils.register_environment(Push, "Push")
 controller = suite.load_controller_config(default_controller="OSC_POSE")
@@ -15,13 +16,12 @@ env = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=False,
     use_camera_obs=False,
-    render_camera="frontview",      
+    render_camera="sideview",      
     control_freq=25,
     horizon = 250
 )
-
 _ = env.reset()
 agent = Agent(env)
 safe_filter = FilterCBF(env)
-weights = np.loadtxt("weights.txt")
-agent.evaluate(weights, env.horizon, render=True)
+weights = np.loadtxt(Path("weights") / "weights.txt")
+agent.evaluate(weights, env.horizon, render=True, fixed_action= True)
