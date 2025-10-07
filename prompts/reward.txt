@@ -12,7 +12,7 @@ You must write a Python:
 Return only the executable Python function code without wrapping it in markdown backticks, namely not writing ```python and ```  respectively at the first and last lines. 
 
 TASK:
-The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the goal position avoiding to touch the table and avoiding the occurrence of the Irreversible Events of the cube to fall from the table.
+The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the goal position.
 
 SUCCESS CRITERIA:
 The task is considered successfully completed when the target cube reaches the goal position, namely distance between them is lower than 0.04.
@@ -20,17 +20,17 @@ The task is considered successfully completed when the target cube reaches the g
 FAILURE CONDITION:
 Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m.
 
-IRREVERSIBLE EVENT:
-Consider the occurrence of the Irreversible Event when the cube is being pushed off the table boundary causing it to fall off.
+IRREVERSIBLE EVENTS
+A list of Irreversible Events associated to this task will be provided below.
+Define, if possible concordingly with the environment class, a dense penalty term for each Irreversible event  related to “how far” the agent currently is from triggering the Irreversible Events.
+The sum of all the dense shaping terms must be defined in a distinct reward-shaping term named irr_events_reward.
 
 HINTS:
 - Define dense shaping terms that clearly guides the agent for for task completion.
 - After definig the other task shaping terms, define a terminal term of the reward function when the task is completed.
-- The shaping term related to “how far” the agent currently is from triggering the Irreversible Event must be defined in a distinct reward-shaping IE_reward.
 - The reward function should implement a shaping that clearly guides the policy towards the goal.
 - The reward components should not be too disproportionate.
 - Penalties for unwanted actions should be very small in absolute value, compared to positive rewards.
-- Do not include comments in the Python script.
 
 FORMALIZATION:
 1. Terminal Reward Term:
@@ -39,7 +39,7 @@ FORMALIZATION:
 - Exactly define: reward += 10 * env.horizon * max_rewards_bonuses * int(env.check_success(env))
 2. Final Reward
 - The general reward function must be a convex combination between the Task associated terms and the Irreversible Event term
-- reward = lambda*(reward) + (1-lambda)*IE_reward
+- reward = lambda*(reward) + (1-lambda)*irr_events_reward
 
 STRUCTURE:
 def get_reward(env,_):

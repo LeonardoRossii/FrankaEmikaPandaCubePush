@@ -27,5 +27,5 @@ env = suite.make(
 obs = env.reset()
 agent = Agent(env)
 llm = GPT(client)
-opt = CEM(agent, llm, reward_gen=False)
+opt = CEM(agent, llm, reward_gen=True)
 opt.train()

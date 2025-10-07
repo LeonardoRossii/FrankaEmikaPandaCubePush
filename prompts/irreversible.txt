@@ -12,9 +12,13 @@ A robot gripper is positioned close to a wooden cube placed on a table.
 The robot must: Reach the cube, touch it simultaneously with both gripper fingers and push it toward a designated goal position on the table.
 
 YOUR OUTPUT
-Provide a synthetic description of the image, explictly saying the color of the cube.
-Provide a concise, numbered list of one or more possible Irreversible Events that could occur during this task.
-Each event should describe what happens and why it is considered irreversible.
+Provide a concise, numbered list of one or more possible Irreversible Events that could occur during this task; each event should describe what happens and why it is considered irreversible.
+The output format must be of the type:
+"IRREVERSIBLE EVENTS:
+1. ...
+2. ...
+...
+"
 
 EXAMPLES
 1. Manipulation Task

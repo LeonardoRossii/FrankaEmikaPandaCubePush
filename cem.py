@@ -7,11 +7,11 @@ class CEM:
         agent,
         llm,
         reward_gen: bool = False,
-        n_its: int = 15,
+        n_its: int = 30,
         n_steps: int = 250,
         randoms: int = 1,
         gamma: float = 0.99,
-        pop_size: int = 25,
+        pop_size: int = 30,
         elite_frac: float = 0.2,
         top_frac: float = 0.2,
         sigma: float = 0.5,
@@ -44,10 +44,8 @@ class CEM:
         self.n_top = None
         
     def init(self):
-        
-        #self.llm.generate_ie()
-        self.llm.generate_ie_with_image()
-        if self.grf: self.llm.generate_reward()
+        #self.llm.generate_ie_with_image()
+        #if self.grf: self.llm.generate_reward()
         
         self.weight_dim = self.agent.get_weights_dim()
         init_best_weight = 0 * np.random.randn(self.weight_dim)

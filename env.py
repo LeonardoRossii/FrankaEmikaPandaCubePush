@@ -50,8 +50,6 @@ class Push(SingleArmEnv):
 
         self.table_offset = np.array((0, 0, 0.95))
         self.goal_pos_offset = np.array([0.2, 0])
-        self._last_obj_goal_dist =  0.2
-        self._last_eef_cube_dist = 0.5
 
         self.safety_filter_effort = 0.0
 
@@ -278,7 +276,6 @@ class Push(SingleArmEnv):
         self.goal_xy =  cube_xy + self.goal_pos_offset
         self.sim.forward()
         cube_pos = self.sim.data.body_xpos[self.cube_body_id]
-        self._last_obj_goal_dist = np.linalg.norm(cube_pos[:2] - self.goal_xy)
         self.safety_filter_effort = 0.0
 
     def visualize(self, vis_settings):

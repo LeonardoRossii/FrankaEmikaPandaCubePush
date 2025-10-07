@@ -12,7 +12,7 @@ class GPT:
     def __init__(
         self,
         client: OpenAI,
-        model: str = "gpt-4o",
+        model: str = "gpt-5",
         temperature: float = 0.0,
         current_dir = Path(__file__).parent,
     ):
@@ -25,16 +25,23 @@ class GPT:
         self.output_reward_path = None
         self.input_ie_prompt = None
         self.input_image_ie = None
+        self.output_ie = None
                 
     def build_reward_prompt(self):
         file_task_description_path = self.current_dir / "prompts" / "reward.txt"
+
         with open(file_task_description_path, "r") as file:
             reward_prompt = file.read().strip()
+
+        reward_prompt += "\n\n" + self.output_ie
+
         file_environment_class_path = self.current_dir / "env.py"
         with open(file_environment_class_path, "r") as file:
             env_class = file.read().strip()
         reward_prompt += "\n\n# Environment class: \n" + env_class
+        print(reward_prompt)
         self.input_prompt_reward = reward_prompt
+
         
     def generate_reward(self):
         self.build_reward_prompt()
@@ -42,8 +49,7 @@ class GPT:
             response = self.client.responses.create(
                 model=self.model,
                 input=self.input_prompt_reward,
-                temperature=self.temperature,
-            )
+                )
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
         
@@ -66,7 +72,6 @@ class GPT:
             response = self.client.responses.create(
                 model=self.model,
                 input=f"{self.input_prompt_prefer}\n\nTrajectories:\n{trajdesc}",
-                temperature=self.temperature
             )
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
@@ -82,18 +87,6 @@ class GPT:
         with open(file_ie_path, "r") as file:
             ie_prompt = file.read().strip()
         self.input_ie_prompt = ie_prompt
-    
-    def generate_ie(self):
-        self.build_ie_prompt()
-        try:
-            response = self.client.responses.create(
-                model = self.model,
-                input = self.input_ie_prompt
-            )
-        except Exception as err:
-            raise RuntimeError(f"OpenAI call failed: {err}")
-        answ = response.output_text
-        print(answ)
 
     @staticmethod
     def _to_data_url(path: str) -> str:
@@ -109,12 +102,14 @@ class GPT:
         self.input_image_ie = self._to_data_url(file_ie_image_path)
 
     def generate_ie_with_image(self):
+        print("build_ie_prompt")
         self.build_ie_prompt()
+        print("build_ie_image")
         self.build_ie_image()
+        print("generate_ie_with_image")
         try:
             response = self.client.responses.create(
                 model=self.model,
-                temperature=self.temperature,
                 input=[{
                     "role": "user",
                     "content": [
@@ -125,4 +120,4 @@ class GPT:
             )
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
-        print(response.output_text)
+        self.output_ie = response.output_text 
