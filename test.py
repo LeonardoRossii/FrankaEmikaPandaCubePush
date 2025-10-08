@@ -20,6 +20,7 @@ env = suite.make(
     control_freq=25,
     horizon = 250
 )
+
 _ = env.reset()
 agent = Agent(env)
 safe_filter = FilterCBF(env)

@@ -240,21 +240,16 @@ class Push(SingleArmEnv):
             @sensor(modality=modality)
             def cube_quat(obs_cache):
                 return self.sim.data.body_xquat[self.cube_body_id].copy()
-            
 
-            @sensor(modality=modality)
-            def eef_to_cube_dist(obs_cache):
-                return np.linalg.norm(self.get_eef_pos() - self.get_cube_pos())
+            sensors = [cube_pos,
+                       goal_pos,
+                       cube_to_bound_dist,
+                       cube_drop,
+                       eef_to_cube,
+                       cube_to_goal,
+                       eef_to_goal,
+                       cube_quat]
             
-            @sensor(modality=modality)
-            def cube_to_goal_dist(obs_cache):
-                return np.linalg.norm(self.get_cube_pos() - self.get_goal_pos())
-            
-            @sensor(modality=modality)
-            def cube_to_boundary_dist(obs_cache):
-                return self.get_cube_bound_dist()
-
-            sensors = [cube_pos, goal_pos, cube_to_bound_dist, cube_drop, eef_to_cube, cube_to_goal, eef_to_goal, cube_quat, eef_to_cube_dist, cube_to_goal_dist, cube_to_boundary_dist]
             names = [s.__name__ for s in sensors]
 
             for name, s in zip(names, sensors):

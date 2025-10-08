@@ -39,9 +39,9 @@ class Agent():
                 state = self.get_state(obs)
                 action = self.forward(state)
             action = self.safe_filter.apply(action)
-            obs, rewards, _, _, = self.env.step(action, [0])
+            obs, rewards, done, _, = self.env.step(action, [0])
             episode_return += rewards * math.pow(gamma, t)
-            if self.env.check_success() or self.env.check_failure():
+            if done or self.env.check_success() or self.env.check_failure():
                 break
             if render: self.env.render()
         return episode_return

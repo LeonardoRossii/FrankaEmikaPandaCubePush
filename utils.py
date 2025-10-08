@@ -1,3 +1,5 @@
+import base64
+import mimetypes
 from pathlib import Path
 from robosuite.environments import ALL_ENVIRONMENTS
 
@@ -15,3 +17,12 @@ def strip_code(code_str):
 def read_text_file(path: Path) -> str:
     with open(path, "r") as file:
         return file.read().strip()
+
+def to_data_url(path: str) -> str:
+    p = Path(path)
+    mime, _ = mimetypes.guess_type(p.name)
+    if mime is None:
+        mime = "image/png"
+    b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+    return f"data:{mime};base64,{b64}"
+

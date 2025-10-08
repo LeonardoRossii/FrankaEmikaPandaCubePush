@@ -18,11 +18,11 @@ SUCCESS CRITERIA:
 The task is considered successfully completed when the target cube reaches the goal position, namely distance between them is lower than 0.04.
 
 FAILURE CONDITION:
-Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m.
+Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m and if one Irreversible Event occurs.
 
 IRREVERSIBLE EVENTS
 A list of Irreversible Events associated to this task will be provided below.
-Define, if possible concordingly with the environment class, a dense penalty term for each Irreversible event  related to “how far” the agent currently is from triggering the Irreversible Events.
+Define, if applicable, in conformity with the environment class, a dense penalty term for each Irreversible event related to “how far” the agent currently is from triggering the Irreversible Events.
 The sum of all the dense shaping terms must be defined in a distinct reward-shaping term named irr_events_reward.
 
 HINTS:

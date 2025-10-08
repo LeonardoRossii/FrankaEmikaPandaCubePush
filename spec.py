@@ -1,130 +1,121 @@
 def get_reward(env, _):
     import numpy as np
 
-    lam = 0.5
-    reward = 0.0
+    lam = 0.5  # convex combination weight
+    # Gather key states
+    eef_pos = env.get_eef_pos()
+    cube_pos = env.get_cube_pos()
+    goal_pos = env.get_goal_pos()
+    table_z = env.model.mujoco_arena.table_offset[2]
 
-    # Poses and useful quantities
-    eef = env.get_eef_pos().astype(float)
-    cube = env.get_cube_pos().astype(float)
-    goal = env.get_goal_pos().astype(float)
-    table_z = float(env.model.mujoco_arena.table_offset[2])
-    table_size = env.table_full_size
+    d_eef_cube = float(np.linalg.norm(eef_pos - cube_pos))
+    d_cube_goal = float(np.linalg.norm(goal_pos - cube_pos))
 
-    d_eef_cube = float(np.linalg.norm(eef - cube))
-    d_cube_goal = float(np.linalg.norm(cube - goal))
+    # Weights for task shaping terms (also used to compute max_rewards_bonuses)
+    w_reach = 1.0
+    w_goal = 1.5
+    w_align = 0.5
+    w_c1 = 0.2
+    w_c2 = 0.2
+    w_both = 0.6
+    w_height = 0.5
 
-    # Unit vectors for alignment and velocity shaping
-    dir_cg = goal - cube
-    norm_cg = np.linalg.norm(dir_cg)
-    u_cg = dir_cg / norm_cg if norm_cg > 1e-8 else np.zeros(3)
+    # Task shaping terms
+    reach_term = w_reach * (1.0 - np.tanh(4.0 * d_eef_cube))
+    goal_term = w_goal * (1.0 - np.tanh(4.0 * d_cube_goal))
 
-    dir_ec = cube - eef
-    norm_ec = np.linalg.norm(dir_ec)
-    u_ec = dir_ec / norm_ec if norm_ec > 1e-8 else np.zeros(3)
+    # Alignment: encourage eef to be behind the cube relative to goal (push direction)
+    v = goal_pos - cube_pos
+    v_norm = np.linalg.norm(v) + 1e-8
+    u = eef_pos - cube_pos
+    u_norm = np.linalg.norm(u) + 1e-8
+    cos = np.clip(np.dot(u, v) / (u_norm * v_norm), -1.0, 1.0)
+    align_term = w_align * 0.5 * (1.0 - cos)  # max when u opposite to v
 
-    # 1) Reach the cube
-    r_reach = 1.0 - np.tanh(4.0 * d_eef_cube)  # in (0,1)
-
-    # 2) Contacts with both fingers
+    # Finger contact shaping
     c1 = 1.0 if env.check_contact_finger_1_cube() else 0.0
     c2 = 1.0 if env.check_contact_finger_2_cube() else 0.0
-    both = 1.0 if (c1 > 0.5 and c2 > 0.5) else 0.0
-    r_contacts = 0.3 * c1 + 0.3 * c2 + 0.7 * both  # max 1.3
+    contact_term = w_c1 * c1 + w_c2 * c2 + w_both * (1.0 if (c1 > 0.0 and c2 > 0.0) else 0.0)
 
-    # 3) Good push alignment: eef behind cube relative to goal direction
-    r_align = float(max(0.0, np.dot(u_ec, u_cg)))  # in [0,1]
+    # Vertical placement for safe pushing slightly above cube center
+    target_z = cube_pos[2] + 0.005
+    height_term = w_height * (1.0 - np.tanh(25.0 * abs(eef_pos[2] - target_z)))
 
-    # 4) Move cube toward goal (position proximity)
-    r_goal = 1.0 - np.tanh(4.0 * d_cube_goal)  # in (0,1)
+    # Sum task-associated shaping terms
+    task_reward = reach_term + goal_term + align_term + contact_term + height_term
 
-    # Weights for task terms
-    w_reach = 1.0
-    w_contacts = 1.0  # already internally weighted to max 1.3
-    w_align = 0.5
-    w_goal = 2.0
-    w_vel = 0.5
-
-    # Sum task reward
-    reward += (
-        w_reach * r_reach
-        + w_contacts * r_contacts
-        + w_align * r_align
-        + w_goal * r_goal
-    )
-
-    # Compute max possible sum of positive bonuses (for terminal term)
-    max_rewards_bonuses = (
-        w_reach * 1.0
-        + 1.3  # r_contacts maximum
-        + w_align * 1.0
-        + w_goal * 1.0
-        + w_vel * 1.0
-    )
-
-    # Irreversible-events dense penalties
+    # Irreversible events dense penalty shaping
     irr_events_reward = 0.0
 
-    # 1-2,8) Cube near table boundary or outside reachable region
-    # Distance to table boundaries in x,y
-    half_x = table_size[0] / 2.0
-    half_y = table_size[1] / 2.0
-    dist_x = max(0.0, half_x - abs(cube[0]))
-    dist_y = max(0.0, half_y - abs(cube[1]))
-    boundary_dist = min(dist_x, dist_y)
-    # Penalize when closer than 5 cm to any edge
-    edge_thresh = 0.05
-    if boundary_dist < edge_thresh:
-        edge_risk = (edge_thresh - boundary_dist) / edge_thresh  # in (0,1]
-        irr_events_reward += -0.5 * edge_risk
+    # 1 & 2) Near table edge / unreachable region: penalize proximity to Y-bound
+    try:
+        bound_dist = float(env.get_cube_bound_dist())
+    except Exception:
+        bound_dist = 1.0
+    irr_events_reward += -1.0 * np.exp(-5.0 * max(0.0, bound_dist))
 
-    # 3) Gripper / arm contact with table; also penalize dangerously low eef height
-    if env.check_contact_table():
-        irr_events_reward += -0.3
-    min_clearance = 0.01
-    clearance = eef[2] - (table_z + min_clearance)
-    if clearance < 0.0:
-        irr_events_reward += -0.2 * min(1.0, abs(clearance) / min_clearance)
+    # 1) Cube falling off table (z below tabletop)
+    drop = (cube_pos[2] - table_z) < 0.0
+    irr_events_reward += -5.0 * (1.0 if drop else 0.0)
 
-    # 5) Finger jams under cube: eef too low under cube when close
-    cube_half_h = 0.02  # from object definition
-    cube_bottom_z = cube[2] - cube_half_h
-    if d_eef_cube < 0.07:
-        under_depth = cube_bottom_z - eef[2]  # >0 means eef under bottom
-        if under_depth > 0.0:
-            irr_events_reward += -0.3 * min(1.0, under_depth / 0.02)
+    # 3 & 8) Gripper-table contact as proxy for unsafe strikes or bumping table
+    contact_table = env.check_contact_table()
+    irr_events_reward += -1.0 * (1.0 if contact_table else 0.0)
 
-    # 6) Excessive force (proxy): use safety filter effort if available
-    eff = getattr(env, "safety_filter_effort", 0.0)
-    if eff is not None and eff > 0.0:
-        irr_events_reward += -0.3 * min(1.0, eff / 10.0)
+    # 6) Finger wedged under cube: penalize eef below cube when close in XY
+    eef_xy = eef_pos[:2]
+    cube_xy = cube_pos[:2]
+    dist_xy = float(np.linalg.norm(eef_xy - cube_xy))
+    if dist_xy < 0.05:
+        below = max(0.0, cube_pos[2] - eef_pos[2])
+        irr_events_reward += -5.0 * np.tanh(20.0 * below)
 
-    # 8) Cube pushed too far from reachable workspace: eef too far from cube
-    if d_eef_cube > 0.18:
-        far_risk = min(1.0, (d_eef_cube - 0.18) / 0.12)  # ramps until ~0.30m
-        irr_events_reward += -0.3 * far_risk
+    # 4 & 7) Self-collision / joint limit proxy: safety filter effort
+    safety_effort = float(getattr(env, "safety_filter_effort", 0.0))
+    irr_events_reward += -0.05 * safety_effort
 
-    # Terminal reward on success
-    reward += 10 * env.horizon * max_rewards_bonuses * int(get_success_condition(env))
+    # Terminal reward term (success bonus)
+    max_rewards_bonuses = w_reach + w_goal + w_align + w_c1 + w_c2 + w_both + w_height
+    try:
+        task_reward += 10 * env.horizon * max_rewards_bonuses * int(env.check_success(env))
+    except TypeError:
+        try:
+            task_reward += 10 * env.horizon * max_rewards_bonuses * int(env.check_success())
+        except Exception:
+            success_local = (d_cube_goal < 0.04)
+            task_reward += 10 * env.horizon * max_rewards_bonuses * int(success_local)
 
-    # Convex combination between task reward and irreversible-events term
-    total_reward = lam * reward + (1.0 - lam) * irr_events_reward
-    return float(total_reward)
+    # Final convex combination
+    reward = lam * task_reward + (1.0 - lam) * irr_events_reward
+
+    return float(reward)
 
 
 def get_success_condition(env):
     import numpy as np
-
-    cube = env.get_cube_pos().astype(float)
-    goal = env.get_goal_pos().astype(float)
-    d = float(np.linalg.norm(cube - goal))
-    return d < 0.04
+    cube_pos = env.get_cube_pos()
+    goal_pos = env.get_goal_pos()
+    return float(np.linalg.norm(goal_pos - cube_pos)) < 0.04
 
 
 def get_failure_condition(env):
     import numpy as np
+    eef_pos = env.get_eef_pos()
+    cube_pos = env.get_cube_pos()
+    table_z = env.model.mujoco_arena.table_offset[2]
 
-    eef = env.get_eef_pos().astype(float)
-    cube = env.get_cube_pos().astype(float)
-    d = float(np.linalg.norm(eef - cube))
-    return d > 0.2
+    d_eef_cube = float(np.linalg.norm(eef_pos - cube_pos))
+    drop = (cube_pos[2] - table_z) < 0.0
+
+    # Near/unreachable region at table edge (Y-bound approx.)
+    try:
+        bound_dist = float(env.get_cube_bound_dist())
+    except Exception:
+        bound_dist = 1.0
+    near_edge = bound_dist < 0.005
+
+    # Treat any irreversible event proxy as failure trigger
+    irr_event = drop or near_edge
+
+    failure = (d_eef_cube > 0.2) or irr_event
+    return bool(failure)
