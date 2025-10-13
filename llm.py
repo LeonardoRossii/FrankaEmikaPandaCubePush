@@ -93,3 +93,29 @@ class GPT:
         if match:
             idx = int(match.group(1))
             return idx
+        
+    def generate_preference_from_video(self):
+        input_content = [
+        {"type": "input_text",
+         "text": f"You will see several robot videos. TASK: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode\n"
+                 "Each group of frames belongs to a different video."}
+        ]
+        
+        video_path0 ="/home/leojellypc/cube_push/videos/lift_demo.mp4"
+        video_path1 = "/home/leojellypc/cube_push/videos/lift_demo1.mp4"
+        video_paths = [video_path0, video_path1]
+
+        for idx, path in enumerate(video_paths, 1):
+            b64_frames = utils.frame_sampler(path, every_n_frames=20, max_frames=16)
+            input_content.append({"type": "input_text", "text": f"Video {idx}:"})
+            for b in b64_frames:
+                input_content.append({
+                    "type": "input_image",
+                    "image_url": f"data:image/jpeg;base64,{b}"
+                })
+
+        resp = self.client.responses.create(
+            model=self.model,
+            input=[{"role": "user", "content": input_content}],
+        )
+        print(resp.output_text)
