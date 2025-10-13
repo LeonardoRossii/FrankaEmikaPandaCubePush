@@ -5,6 +5,8 @@ import importlib
 import spec
 from pathlib import Path
 import inspect
+from env import Push
+import agent
 
 class GPT:
     def __init__(
@@ -28,7 +30,10 @@ class GPT:
     def build_irreversible_events_prompt(self):
         file_ie_path = self.current_dir / "prompts" / "irreversible.txt"
         ie_prompt = utils.read_text_file(file_ie_path)
+        #file_environment_class_path = self.current_dir / "env.py"
+        #env_class_text = utils.read_text_file(file_environment_class_path)
         self.input_ie_prompt = ie_prompt
+        #self.input_ie_prompt = ie_prompt + "\n\n# Environment class: \n" + env_class_text
         file_ie_image_path = self.current_dir / "images" / "task_camera_render.png"
         self.input_image_ie = utils.to_data_url(file_ie_image_path)
 
@@ -74,31 +79,36 @@ class GPT:
             f.write(content)
         importlib.reload(spec)
 
-    def build_preference_prompt(self):
+    def build_preference_setup_prompt(self):
         file_task_description_path = self.current_dir / "prompts" / "feedback.txt"
         preference_prompt = utils.read_text_file(file_task_description_path)
+        if self.output_ie is not None: preference_prompt += f"\n\n{self.output_ie}"
+        preference_prompt += f"\nOBSERVABLES:\n\n{utils.extract_function_from_class(Push, '_setup_observables')}"
+        file_agent_class_path = self.current_dir / "agent.py"
+        env_agent_text = utils.read_text_file(file_agent_class_path)
+        preference_prompt += env_agent_text
         self.input_prompt_prefer = preference_prompt
 
-    def generate_preference(self, trajdesc):
-        self.build_preference_prompt()
+    def generate_preference_setup(self):
+        self.build_preference_setup_prompt()
         try:
             response = self.client.responses.create(
                 model=self.model,
-                input=f"{self.input_prompt_prefer}\n\nTrajectories:\n{trajdesc}",
+                input= self.input_prompt_prefer,
             )
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
-        answ = response.output_text
-        match = re.search(r"idx\s*=\s*(\d+)", answ)
-        if match:
-            idx = int(match.group(1))
-            return idx
+        content = response.output_text
+        with open(Path(inspect.getfile(agent)), "w") as f:
+            f.write(content)
+        importlib.reload(spec)
         
-    def generate_preference_from_video(self):
+    def generate_preference(self, tdesc):
+        input_text = f"You will recive two metrics description of a robotic trajecoty and the corresponding videos. The desired task is: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode based on the metrics below and of the videos (Each group of frames belongs to a different video)."
+        input_text += f"\n\n{tdesc}"
         input_content = [
         {"type": "input_text",
-         "text": f"You will see several robot videos. TASK: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode\n"
-                 "Each group of frames belongs to a different video."}
+         "text": input_text}
         ]
         
         video_path0 ="/home/leojellypc/cube_push/videos/lift_demo.mp4"

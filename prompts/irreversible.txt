@@ -1,7 +1,7 @@
 GOAL
 You are a Reinforcement Learning and Robotics expert.
-You are provided with an image that shows you the simulation task setup.
-Your goal is to identify and describe Irreversible Events that may occur during the execution of the described task, particularly in the shown robotic setup.
+You are provided with an image that shows you the simulation task setup and the Python Robosuite class defining the environment.
+Your goal is to identify and describe main Irreversible Events that may occur during the execution of the described task, particularly in the shown robotic setup and that are possible to define with the class variables.
 
 DEFINITION OF IRREVERSIBLE EVENT
 An Irreversible Event is an event that can occur during the learning or execution of a robotic task and that limits, interrupts, or permanently stops the learning process.
@@ -12,7 +12,7 @@ A robot gripper is positioned close to a wooden cube placed on a table.
 The robot must: Reach the cube, touch it simultaneously with both gripper fingers and push it toward a designated goal position on the table.
 
 YOUR OUTPUT
-Provide a concise, numbered list of one or more possible Irreversible Events that could occur during this task; each event should describe what happens and why it is considered irreversible.
+Provide a concise (without any reference to python variables), numbered list of one or more possible Irreversible Events that could occur during this task; each event should describe what happens and why it is considered irreversible.
 The output format must be of the type:
 "IRREVERSIBLE EVENTS:
 1. ...
