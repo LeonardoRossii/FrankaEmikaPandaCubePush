@@ -30,31 +30,8 @@ _ = env_.reset()
 agent = Agent(env_)
 safe_filter = FilterCBF(env_)
 llm = GPT(client)
-
 weights = np.loadtxt(Path("weights") / "weights.txt")
-null = np.zeros(len(weights))
-
-print(llm.generate_irreversible_events())
-llm.generate_preference_setup()
-
-ms = []
-
-_, m0 = agent.evaluate(weights,
-                      env_.horizon,
-                      render=False,
-                      trajectory=True)
-ms.append(m0)
-
-_, m1 = agent.evaluate(null,
-                       env_.horizon,
-                       render=False,
-                       trajectory=True)
-
-ms.append(m1)
-
-tdesc = "\n\n".join(f"Trajectory {i+1}:\n{json.dumps(m, indent=3)}" for i, m in enumerate(ms))
-
-llm.generate_preference(tdesc)
+_,_ = agent.evaluate(weights, env_.horizon, [0], render=True)
 
 env_.close()
 

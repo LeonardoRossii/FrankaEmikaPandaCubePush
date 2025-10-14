@@ -1,4 +1,5 @@
 import utils
+import json
 import numpy as np
 from pathlib import Path
 
@@ -53,6 +54,7 @@ class CEM:
     def init(self):
         #self.llm.generate_irreversible_events()
         #if self.grf: self.llm.generate_reward()
+        #self.llm.generate_preference_setup()
         self._lambda = self.init_lambda
         self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()
@@ -85,7 +87,7 @@ class CEM:
         best_returns = [-np.inf] * self.n_lambdas
         best_weights = np.stack([np.zeros(self.weight_dim).copy() for _ in range(self.n_lambdas)])
         for i, weight in enumerate(weights_pop):
-            returns= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            returns,_= self.agent.evaluate(weight, self.n_steps, self.lambdas)
             for n, ret in enumerate(returns):
                 if ret > best_returns[n]:
                     best_returns[n] = ret
@@ -114,9 +116,13 @@ class CEM:
         self.sigma = self.beta * elite_std + (1 - self.beta) * self.sigma
 
     def feedback(self, weights):
+        episode_metrics = []
         for w, weight in enumerate(weights):
-            self.agent.evaluate(weight, self.n_steps, [self.lambdas[w]], render = True, video_i=w)
-        best_idx = self.llm.generate_preference()
+            _, met = self.agent.evaluate(weight, self.n_steps, [self.lambdas[w]], render = True, video_i=w)
+            episode_metrics.append(met)
+        metrics_text = "\n\n".join(f"Trajectory {i}:\n{json.dumps(t, indent=self.n_lambdas)}" for i, t in enumerate(episode_metrics))
+
+        best_idx = self.llm.generate_preference(metrics_text)
         best_lambda = self.lambdas[best_idx]
         self._lambda = self._lambda + 0.15 * (best_lambda-self._lambda)
         self.lambdas = utils.sample_params(self._lambda, self.n_lambdas)
@@ -135,6 +141,8 @@ class CEM:
             returns, best_weights = self.evaluate(weights_pop)
             elite_weights,_ = self.elitism(returns, weights_pop, n_elite)
             self.update(elite_weights)
-            self.feedback(best_weights)
+            if i%2==0:
+                if not utils.same_best_weight(best_weights):
+                    self.feedback(best_weights)
             self.decay()
             self.save()

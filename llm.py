@@ -6,7 +6,7 @@ import spec
 from pathlib import Path
 import inspect
 from env import Push
-import agent
+import metrics
 
 class GPT:
     def __init__(
@@ -80,11 +80,11 @@ class GPT:
         importlib.reload(spec)
 
     def build_preference_setup_prompt(self):
-        file_task_description_path = self.current_dir / "prompts" / "feedback.txt"
+        file_task_description_path = self.current_dir / "prompts" / "feedback_setup.txt"
         preference_prompt = utils.read_text_file(file_task_description_path)
         if self.output_ie is not None: preference_prompt += f"\n\n{self.output_ie}"
         preference_prompt += f"\nOBSERVABLES:\n\n{utils.extract_function_from_class(Push, '_setup_observables')}"
-        file_agent_class_path = self.current_dir / "agent.py"
+        file_agent_class_path = self.current_dir / "metrics.py"
         env_agent_text = utils.read_text_file(file_agent_class_path)
         preference_prompt += env_agent_text
         self.input_prompt_prefer = preference_prompt
@@ -99,12 +99,22 @@ class GPT:
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
         content = response.output_text
-        with open(Path(inspect.getfile(agent)), "w") as f:
+        with open(Path(inspect.getfile(metrics)), "w") as f:
             f.write(content)
-        importlib.reload(spec)
-        
-    def generate_preference(self):
-        input_text = f"You will recive videos. The desired task is: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode based on the videos (Each group of frames belongs to a different video). At the end return me an the index corresponding to the best videos in this way: idx=0 or idx= 1 or idx=2."
+        importlib.reload(metrics)
+
+
+    def build_preference_prompt(self, metrics_text):
+        file_task_description_path = self.current_dir / "prompts" / "feedback.txt"
+        preference_prompt = utils.read_text_file(file_task_description_path)
+        if self.output_ie is not None: preference_prompt += f"\n\n{self.output_ie}"
+        preference_prompt += f"\n\n{metrics_text}"
+        self.input_prompt_prefer = preference_prompt
+
+    def generate_preference(self, metrics_text):
+        self.build_preference_prompt(metrics_text)
+        print(self.input_prompt_prefer)
+        input_text = self.input_prompt_prefer
         input_content = [
         {"type": "input_text",
          "text": input_text}
@@ -117,8 +127,8 @@ class GPT:
         video_paths = [video_path0, video_path1, video_path2]
 
         for idx, path in enumerate(video_paths, 1):
-            b64_frames = utils.frame_sampler(path, every_n_frames=20, max_frames=16)
-            input_content.append({"type": "input_text", "text": f"Video {idx}:"})
+            b64_frames = utils.frame_sampler(path, every_n_frames=32, max_frames=128)
+            input_content.append({"type": "input_text", "text": f"Video {idx-1}:"})
             for b in b64_frames:
                 input_content.append({
                     "type": "input_image",

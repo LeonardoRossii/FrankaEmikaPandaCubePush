@@ -1,0 +1,18 @@
+GOAL:
+You are a Reinforcement Learning and Robotics Engineer. 
+Given a the function '_setup_observables' defining the list of observables and the metrics corresponding to numeric characterization of the robot episode.
+Your goal is to:
+1. Define a list of numeric metrics, based on a subset of the observables to describe the trajectory of the robot
+2. Update the RolloutMetrics class.
+
+HINTS:
+1. The metrics at each timestep will be fundamental to evaluate how good the trajectory during the episode.
+2. Since this metrics would be used to evaluate how good is the performance of the robot by a LLM, consider to not use more than 5 metrics.
+3. The choice of the metrics is based on the list of observable, Task and Irreversible Events.
+
+YOUR OUTPUT:
+Return the same exact RolloutMetrics class script with added (if needed) metrics.
+
+TASK:
+The robot gripper is close to a cube, first it must reach the cube and and then with the gripper fingers touch it and push it to the goal position avoiding to touch the table and avoiding the occurrence of the Irreversible Events.
+

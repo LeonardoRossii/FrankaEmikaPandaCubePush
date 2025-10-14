@@ -3,6 +3,7 @@ import math
 import utils
 import numpy as np
 from filters import FilterCBF
+from metrics import RolloutMetrics
 
 class Agent():
     def __init__(self, env):
@@ -36,13 +37,17 @@ class Agent():
         state = self.get_state(obs)
         episode_returns = [0.0] * len(lambdas)
         frames = []
+        tracker = RolloutMetrics(log_every=10)
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
             action = self.safe_filter.apply(action)
             obs, rewards, done, _, = self.env.step(action, lambdas)
+
+            tracker.log_step(t=t, obs=obs)
+
             if render:
-                frame = self.env.sim.render(width=640, height=480, camera_name="sideview")
+                frame = self.env.sim.render(width=640, height=480, camera_name="frontview")
                 frame = frame[::-1, :, :]
                 frames.append(frame)
 
@@ -50,6 +55,8 @@ class Agent():
                 episode_returns[i] += float(rewards[i]) * math.pow(gamma, t)
 
             if done or self.env.check_success() or self.env.check_failure():
+                accomplished = bool(self.env.check_success())
+                metrics = tracker.to_dict(accomplished)
                 break
             if render:
                 self.env.render()
@@ -57,4 +64,4 @@ class Agent():
             utils.save_video(frames, f"video{video_i}.mp4", fps=20)
 
         self.env.close()
-        return episode_returns
+        return episode_returns, metrics

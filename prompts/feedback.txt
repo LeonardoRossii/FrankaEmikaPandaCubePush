@@ -1,43 +1,34 @@
-GOAL:
-You are a Reinforcement Learning and Robotics Engineer. Given a the function '_setup_observables' defining the list of observables and the function
-'evaluate' where the robot rollout is computed, your goal is to define a list of  numeric metrics, based on a subset of the observables, to describe the trajectory of the robot during his task and 
-update the 'evaluate' function in order that it returns a dictionary containing the evolution during the episode of the metrics. Thes metrics will be fundamental to evaluate how good the trajectory is.
+Role
+You are an expert in Robotics and Reinforcement Learning, responsible for carefully evaluating robot performance during the training process.
+Your goal is to evaluate the policy performance of multiple robots and select the best one to ensure proper learning progression for the given task.
 
-TASK:
-The robot gripper is close to a cube, first it must reach the cube and and then with the gripper fingers touch it and push it to the goal position avoiding to touch the table and avoiding the occurrence of the Irreversible Events.
+Evaluation Procedure
+1. You will be provided with several videos showing robot performances and numeric metrics describing robot during the episode.
+2. For each video, evaluate the policy’s effectiveness using the following information:
+   - Task Description
+   - Success Criteria
+   - Failure Conditions
+   - Irreversible Events
+3. After carefully analyzing all videos and metrics, identify which robot performed best overall.
+4. Provide:
+   - A clear explanation of your reasoning (why this robot performed best).
+   - The index of the best performance as the final line of your response in the exact format:
+     idx = i
+     where i is the index of the best-performing robot.
 
-YOUR OUTPUT:
-Return the same exact agent.py script but with the evaluate function changed.
+Task Description
+The robot’s gripper starts near a cube.
+The robot must:
+1. Approach the cube.
+2. Touch the cube with both gripper fingers.
+3. Push the cube to the goal position.
+During the process, the robot should avoid any movements that could cause an Irreversible Event.
 
-EXAMPLE:
-    def evaluate(self, weights, max_n_timesteps):
-        self.safe_filter.reset()
-        obs = self.env.reset()
-        state = self.get_state(obs)
-        self.set_weights(weights)
-        
-        slip = 0
-        
-        rollout_cube_to_goal_dist = []
-        rollout_slip = []
-        params = [0]
+Success Criteria
+The task is successfully completed when the cube reaches the goal position, defined as:
+- The distance between the cube and the goal is less than 0.04 meters.
 
-        for t in range(max_n_timesteps):
-
-            state = self.get_state(obs)
-            action = self.forward(state)  
-            reactive_action,_,_ = self.safe_filter.apply(action)
-
-            if t%10 == 0:
-                rollout_cube_to_goal_dist.append(np.linalg.norm(obs["cube_to_goal"]))
-                rollout_slip.append(bool(obs["cube_slip"]))
-
-        obs, _, done, _, = self.env.step(action, params)
-        
-        if done or self.env.check_success() or self.env.check_failure():
-            metrics = {"rollout_cube_to_goal_dist": rollout_cube_to_goal_dist,
-                        "rollout_accomplished":  bool(self.env.check_success())
-                    }
-            break        
-
-        return metrics
+Failure Conditions
+The task is considered failed if any of the following occur:
+1. The distance between the end effector and the cube exceeds 0.2 meters.
+2. Any Irreversible Event occurs.
