@@ -1,3 +1,4 @@
+import utils
 import numpy as np
 from pathlib import Path
 
@@ -20,6 +21,8 @@ class CEM:
         pop_decay_rate: float = 0.97,
         pop_min: int = 8,
         elite_min: int = 2,
+        n_lambdas = 3,
+        init_lambda = 0.5,
     ):
         self.agent = agent
         self.llm = llm
@@ -42,18 +45,30 @@ class CEM:
         self.best_weight = None
         self.top_weights = None
         self.n_top = None
+        self.n_lambdas = n_lambdas
+        self.lambdas = None
+        self.init_lambda = init_lambda
+        self._lambda = init_lambda 
         
     def init(self):
-        ie_list = self.llm.generate_irreversible_events()
-        print(ie_list)
-        if self.grf: self.llm.generate_reward()
+        #self.llm.generate_irreversible_events()
+        #if self.grf: self.llm.generate_reward()
+        self._lambda = self.init_lambda
+        self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()
         init_best_weight = 0 * np.random.randn(self.weight_dim)
         self.mean_weight = init_best_weight
         self.best_weight = self.mean_weight
         n_elite_init = max(int(self.pop_size * self.elite_frac), self.elite_min)
         self.n_top = max(int(max(n_elite_init, self.elite_min) * self.top_frac), 1)
-        self.top_weights = [self.mean_weight + self.sigma * np.random.randn(self.weight_dim) for _ in range(self.n_top)]
+        self.top_weights = [
+            self.mean_weight + self.sigma * np.random.randn(self.weight_dim)
+            for _ in range(self.n_top)
+        ]
+    
+    def log(self, iter):
+        print(f"Episode: {iter}")
+        print(f"Lambdas: {self.lambdas}")
     
     def populate(self):
         n_elite = max(int(self.pop_size * self.elite_frac), self.elite_min)
@@ -66,13 +81,19 @@ class CEM:
         return n_elite, weights_pop
 
     def evaluate(self, weights_pop):
-        returns = []
+        _return = []
+        best_returns = [-np.inf] * self.n_lambdas
+        best_weights = np.stack([np.zeros(self.weight_dim).copy() for _ in range(self.n_lambdas)])
         for i, weight in enumerate(weights_pop):
-            _return= self.agent.evaluate(weight, self.n_steps, self.gamma)
-            returns.append(_return)
-            print(f"return {i}: {(_return)}")
-        returns = np.asarray(returns, dtype=float)
-        return returns
+            returns= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            for n, ret in enumerate(returns):
+                if ret > best_returns[n]:
+                    best_returns[n] = ret
+                    best_weights[n] = weight
+            _return.append(returns[-1])
+            print(f"return {i}: {(returns[-1])}")
+        _return = np.asarray(_return, dtype=float)
+        return _return, best_weights
 
     def elitism(self, returns, weights_pop, n_elite):
         elite_idxs = np.argpartition(returns, -n_elite)[-n_elite:]
@@ -92,6 +113,14 @@ class CEM:
         elite_std = np.std(elite_weights, axis=0)
         self.sigma = self.beta * elite_std + (1 - self.beta) * self.sigma
 
+    def feedback(self, weights):
+        for w, weight in enumerate(weights):
+            self.agent.evaluate(weight, self.n_steps, [self.lambdas[w]], render = True, video_i=w)
+        best_idx = self.llm.generate_preference()
+        best_lambda = self.lambdas[best_idx]
+        self._lambda = self._lambda + 0.15 * (best_lambda-self._lambda)
+        self.lambdas = utils.sample_params(self._lambda, self.n_lambdas)
+
     def decay(self):
         self.pop_size = max(self.pop_min, int(round(self.pop_size * self.pop_decay_rate)))
 
@@ -101,9 +130,11 @@ class CEM:
     def train(self):
         self.init()
         for i in range(self.n_its):
+            self.log(i)
             n_elite, weights_pop = self.populate()
-            returns = self.evaluate(weights_pop)
+            returns, best_weights = self.evaluate(weights_pop)
             elite_weights,_ = self.elitism(returns, weights_pop, n_elite)
             self.update(elite_weights)
+            self.feedback(best_weights)
             self.decay()
             self.save()

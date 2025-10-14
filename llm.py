@@ -103,17 +103,18 @@ class GPT:
             f.write(content)
         importlib.reload(spec)
         
-    def generate_preference(self, tdesc):
-        input_text = f"You will recive two metrics description of a robotic trajecoty and the corresponding videos. The desired task is: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode based on the metrics below and of the videos (Each group of frames belongs to a different video)."
-        input_text += f"\n\n{tdesc}"
+    def generate_preference(self):
+        input_text = f"You will recive videos. The desired task is: The robot gripper is close to a cube, first it must reach the cube and and then with both the gripper fingers touch it and push it to the left.  Compare how successful the robot was in each episode based on the videos (Each group of frames belongs to a different video). At the end return me an the index corresponding to the best videos in this way: idx=0 or idx= 1 or idx=2."
         input_content = [
         {"type": "input_text",
          "text": input_text}
         ]
         
-        video_path0 ="/home/leojellypc/cube_push/videos/lift_demo.mp4"
-        video_path1 = "/home/leojellypc/cube_push/videos/lift_demo1.mp4"
-        video_paths = [video_path0, video_path1]
+        video_path0 = "/home/leojellypc/cube_push/videos/video0.mp4"
+        video_path1 = "/home/leojellypc/cube_push/videos/video1.mp4"
+        video_path2 = "/home/leojellypc/cube_push/videos/video2.mp4"
+
+        video_paths = [video_path0, video_path1, video_path2]
 
         for idx, path in enumerate(video_paths, 1):
             b64_frames = utils.frame_sampler(path, every_n_frames=20, max_frames=16)
@@ -128,4 +129,9 @@ class GPT:
             model=self.model,
             input=[{"role": "user", "content": input_content}],
         )
-        print(resp.output_text)
+        answ = resp.output_text
+        print(answ)
+        match = re.search(r"idx\s*=\s*(\d+)", answ)
+        if match:
+            idx = int(match.group(1))
+        return idx

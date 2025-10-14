@@ -72,3 +72,22 @@ def frame_sampler(
 def extract_function_from_class(cls, func_name):
     source = inspect.getsource(getattr(cls, func_name))
     return source
+
+def sample_params(c_param, n_params):
+    params = []
+    if c_param != 0.0:
+        while True:
+            params = np.abs(np.random.normal(c_param, 0.25, size=n_params-1)).tolist()
+            if ((params[0] < c_param and params[1] > c_param) or
+                (params[0] > c_param and params[1] < c_param)) and all(x <= 1 for x in params):
+                break
+    else:
+        params = np.abs(np.random.normal(c_param, 0.25, size=n_params-1)).tolist()
+    params.append(c_param)
+    return params
+
+def same_best_weight(weights, rtol = 1e-02, atol= 1e-02):
+    return all(
+        np.allclose(weights[i], weights[i + 1], rtol, atol)
+        for i in range(len(weights) - 1)
+        )

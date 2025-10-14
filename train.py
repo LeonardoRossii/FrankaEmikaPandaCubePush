@@ -15,11 +15,11 @@ env = suite.make(
     "Push",
     robots="Panda",
     controller_configs=controller,
-    has_renderer=False,             
-    has_offscreen_renderer=False,
+    has_renderer=True,             
+    has_offscreen_renderer=True,
     render_collision_mesh=False,
     use_camera_obs=False,
-    render_camera=None,      
+    render_camera="sideview",      
     control_freq=25,
     horizon = 250      
 )

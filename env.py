@@ -81,7 +81,7 @@ class Push(SingleArmEnv):
         )
 
     def reward(self, action=None, param = None):
-        return spec.get_reward(self, action)
+        return spec.get_reward(self, action, param)
     
     def check_success(self):
         return spec.get_success_condition(self)
