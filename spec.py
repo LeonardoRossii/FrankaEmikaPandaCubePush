@@ -70,10 +70,6 @@ def get_reward(env, action, lambdas):
             below = max(0.0, cube_pos[2] - eef_pos[2])
             irr_events_reward += -5.0 * np.tanh(20.0 * below)
 
-        # 4 & 7) Self-collision / joint limit proxy: safety filter effort
-        safety_effort = float(getattr(env, "safety_filter_effort", 0.0))
-        irr_events_reward += -0.05 * safety_effort
-
         # Terminal reward term (success bonus)
         max_rewards_bonuses = w_reach + w_goal + w_align + w_c1 + w_c2 + w_both + w_height
         try:
@@ -118,5 +114,5 @@ def get_failure_condition(env):
     # Treat any irreversible event proxy as failure trigger
     irr_event = drop or near_edge
 
-    failure = (d_eef_cube > 0.2) or irr_event
+    failure = (d_eef_cube > 0.2)
     return bool(failure)

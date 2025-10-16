@@ -24,6 +24,7 @@ class CEM:
         elite_min: int = 2,
         n_lambdas = 3,
         init_lambda = 0.5,
+        drop = 0,
     ):
         self.agent = agent
         self.llm = llm
@@ -50,6 +51,7 @@ class CEM:
         self.lambdas = None
         self.init_lambda = init_lambda
         self._lambda = init_lambda 
+        self.drop = drop
         
     def init(self):
         #self.llm.generate_irreversible_events()
@@ -71,6 +73,7 @@ class CEM:
     def log(self, iter):
         print(f"Episode: {iter}")
         print(f"Lambdas: {self.lambdas}")
+        print(f"Drops: {self.drop}")
     
     def populate(self):
         n_elite = max(int(self.pop_size * self.elite_frac), self.elite_min)
@@ -87,7 +90,10 @@ class CEM:
         best_returns = [-np.inf] * self.n_lambdas
         best_weights = np.stack([np.zeros(self.weight_dim).copy() for _ in range(self.n_lambdas)])
         for i, weight in enumerate(weights_pop):
-            returns,_= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            returns,_, drop= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            if drop:
+                self.save_drop(weight)
+                self.drop += 1
             for n, ret in enumerate(returns):
                 if ret > best_returns[n]:
                     best_returns[n] = ret
@@ -118,7 +124,7 @@ class CEM:
     def feedback(self, weights):
         episode_metrics = []
         for w, weight in enumerate(weights):
-            _, met = self.agent.evaluate(weight, self.n_steps, [self.lambdas[w]], render = True, video_i=w)
+            _, met, _ = self.agent.evaluate(weight, self.n_steps, [self.lambdas[w]], render = True, video_i=w)
             episode_metrics.append(met)
         metrics_text = "\n\n".join(f"Trajectory {i}:\n{json.dumps(t, indent=self.n_lambdas)}" for i, t in enumerate(episode_metrics))
 
@@ -132,6 +138,9 @@ class CEM:
 
     def save(self):
         np.savetxt(Path("weights") / "weights.txt", self.best_weight)
+    
+    def save_drop(self, weight):
+        np.savetxt(Path("weights") / "weights_drop.txt", weight)
 
     def train(self):
         self.init()
@@ -141,8 +150,8 @@ class CEM:
             returns, best_weights = self.evaluate(weights_pop)
             elite_weights,_ = self.elitism(returns, weights_pop, n_elite)
             self.update(elite_weights)
-            if i%2==0:
-                if not utils.same_best_weight(best_weights):
-                    self.feedback(best_weights)
+            #if i%2==0:
+            #    if not utils.same_best_weight(best_weights):
+            #        self.feedback(best_weights)
             self.decay()
             self.save()

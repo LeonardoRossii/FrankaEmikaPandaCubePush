@@ -2,8 +2,10 @@ import os
 import math
 import utils
 import numpy as np
+from mpc import OSPMPCFilter
 from filters import FilterCBF
 from metrics import RolloutMetrics
+from table_collision import TableCollisionFilter
 
 class Agent():
     def __init__(self, env):
@@ -12,7 +14,7 @@ class Agent():
         self.output_size = self.env.action_dim
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
-        self.safe_filter = FilterCBF(self.env)
+        self.safe_filter = TableCollisionFilter(self.env)
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -36,13 +38,18 @@ class Agent():
         obs = self.env.reset()
         state = self.get_state(obs)
         episode_returns = [0.0] * len(lambdas)
+        drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
+        fixed_action = np.array([0.0,0.5,0,0,0,0,0,0])
+
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(action)
+            action = self.safe_filter.apply(action.copy())
             obs, rewards, done, _, = self.env.step(action, lambdas)
+            if obs["cube_drop"]:
+                drop = True
 
             tracker.log_step(t=t, obs=obs)
 
@@ -64,4 +71,4 @@ class Agent():
             utils.save_video(frames, f"video{video_i}.mp4", fps=20)
 
         self.env.close()
-        return episode_returns, metrics
+        return episode_returns, metrics, drop

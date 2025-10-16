@@ -235,7 +235,8 @@ class Push(SingleArmEnv):
             @sensor(modality=modality)
             def cube_drop(obs_cache):
                 if "cube_pos" in obs_cache:
-                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < 0
+
+                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < -0.01
 
             @sensor(modality=modality)
             def cube_quat(obs_cache):

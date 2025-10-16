@@ -16,22 +16,20 @@ class Filter:
         return action
     
 class FilterCBF:
-    def __init__(self, env, alpha=1.0):
+    def __init__(self, env, alpha=1):
         self.env = env
-        self.alpha = float(alpha)
+        self.alpha = alpha
 
-        self.dt = 1.0/env.control_freq
+        half_x = self.env.table_full_size[0]/2.0
+        half_y = self.env.table_full_size[1]/2.0
 
-        half_x = float(self.env.table_full_size[0]) / 2.0
-        half_y = float(self.env.table_full_size[1]) / 2.0
-
-        safe_margin = 0.1*half_x
+        safe_margin = 0.05 *  half_x
         
-        self.xmin, self.xmax = -half_x+safe_margin, +half_x-safe_margin
-        self.ymin, self.ymax = -half_y+safe_margin, +half_y-safe_margin
+        self.xmin = -half_x + safe_margin
+        self.xmax = +half_x - safe_margin
 
-        self.xspan = self.xmax - self.xmin
-        self.yspan = self.ymax - self.ymin
+        self.ymin = -half_y + safe_margin
+        self.ymax = +half_y - safe_margin
 
         self.n = 2
 
@@ -52,15 +50,16 @@ class FilterCBF:
 
     def step(self, dist, span):
         s = np.clip(dist / max(span, 1e-9), 0.0, 1.0)
-        step = np.tanh(self.alpha * s)              
-        return min(step, dist)
+        step = np.tanh(1 * s)              
+        return step
     
     def apply(self, action):
         
         act = action.copy()
         nom = act[:2]
         
-        pos = self.env.get_cube_pos()[:2]
+        #pos = self.env.get_cube_pos()[:2]
+        pos = self.env.sim.data.site_xpos[self.env.robots[0].eef_site_id][:2]
         
         d_to_min = np.array([pos[0] - self.xmin, pos[1] - self.ymin])
         d_to_max = np.array([self.xmax - pos[0], self.ymax - pos[1]])

@@ -9,7 +9,7 @@ from openai import OpenAI
 import importlib
 
 utils.register_environment(Push, "Push")
-controller = suite.load_controller_config(default_controller="OSC_POSE")
+controller = suite.load_controller_config(default_controller="JOINT_VELOCITY")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 env = suite.make(
@@ -26,8 +26,8 @@ env = suite.make(
 )
 
 llm = GPT(client)
-llm.generate_preference_setup()
-importlib.reload(agent)
+#llm.generate_preference_setup()
+#importlib.reload(agent)
 
 obs = env.reset()
 agent = agent.Agent(env)
