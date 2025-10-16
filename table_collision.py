@@ -3,29 +3,21 @@ import numpy as np
 import scipy.sparse as sp
 
 class TableCollisionFilter:
-    def __init__(self, env, alpha=10, margin=0.00, max_step=None):
+    def __init__(self, env, alpha=10, margin=0.0):
         self.env = env
-        self.alpha = float(alpha)
-        self.margin = float(margin)
-        self.max_step = None if max_step is None else np.array(max_step, dtype=float).reshape(-1)
-        if self.max_step is not None and self.max_step.size == 1:
-            self.max_step = np.repeat(self.max_step.item(), 3)
-
-        self.control_freq = float(getattr(env, "control_freq", 20.0))
-        self.dt = 1.0 / self.control_freq
-
+        self.alpha = alpha
+        self.margin = margin
         self.h = 0.0
         self.grad = np.zeros(3)
         self.pos = np.zeros(3)
 
     def superquadric(self):
         e1, e2 = 0.15, 0.15
-
         kappa = 1e-12
 
         cx = 0.0
         cy = 0.0
-        cz = float(self.env.model.mujoco_arena.table_offset[2])
+        cz = self.env.model.mujoco_arena.table_offset[2]
 
         Lx = float(self.env.table_full_size[0]) / 2.0
         Ly = float(self.env.table_full_size[1]) / 2.0
@@ -51,23 +43,16 @@ class TableCollisionFilter:
         Sy = (ay) ** (2.0 / e2)
         Axy = (Sx + Sy) ** (e2 / e1) 
         Sz = (az) ** (2.0 / e1)      
-
+        sum_S = Sx + Sy
         F = Axy + Sz
+
         self.h = F - (1.0 + self.margin)
 
         dSx_dx = (2.0 / e2) * (ax ** (2.0 / e2 - 1.0)) * sgnx * (1.0 / Lx)
         dSy_dy = (2.0 / e2) * (ay ** (2.0 / e2 - 1.0)) * sgny * (1.0 / Ly)
-
-        sum_S = Sx + Sy
-
-        if sum_S > 0.0:
-            common_xy = (e2 / e1) * (sum_S ** (e2 / e1 - 1.0))
-        else:
-            common_xy = 0.0
-
+        common_xy = (e2 / e1) * (sum_S ** (e2 / e1 - 1.0)) 
         dA_dx = common_xy * dSx_dx
         dA_dy = common_xy * dSy_dy
-
         dSz_dz = (2.0 / e1) * (az ** (2.0 / e1 - 1.0)) * sgnz * (1.0 / Lz)
 
         self.grad = np.array([dA_dx, dA_dy, dSz_dz], dtype=float)
@@ -93,15 +78,15 @@ class TableCollisionFilter:
         return a, h
 
 
-    def enforce_cbf_osqp(self, u_des, a, h, alpha = None, umin = None, umax = None, rho = 1e5):
-        if alpha is None:
-            alpha = self.alpha
+    def enforce_cbf_osqp(self, u_des, a, h, rho = 1e5):
 
-        a = np.asarray(a).reshape(-1)
-        u_des = np.asarray(u_des).reshape(-1)
-        n= u_des.size
-        b = float(-alpha * h)
+        u_des = np.asarray(u_des).reshape(-1) # Force u_eds to 1-D array
+        n = u_des.size
 
+        a = np.asarray(a).reshape(-1) # Force a to 1-D array
+        b = float(-self.alpha * h)
+        
+        # For quadratic cost
         P = sp.block_diag([sp.eye(n), sp.csr_matrix([[rho]])], format="csc")
         q = np.zeros(n+1)
         q[:n] = -u_des
@@ -111,26 +96,18 @@ class TableCollisionFilter:
         A_data = []
         A_cols = []
 
+        # build matrix A
+        # first row for CBF
         for j in range(n):
             A_rows.append(0); A_cols.append(j); A_data.append(a[j])
         A_rows.append(0); A_cols.append(n); A_data.append(1.0)
 
+        # second row for Slack
         A_rows.append(1); A_cols.append(n); A_data.append(1.0)
 
+        # l <= Ax <= u
         l = [b, 0.0]
         u = [np.inf, np.inf]
-
-        if umin is not None and umax is not None:
-            umin = np.asarray(umin).reshape(n)
-            umax = np.asarray(umax).reshape(n)
-            for i in range(n):
-                rows += 1
-                A_rows.append(rows-1); A_cols.append(i); A_data.append(1.0)
-                l.append(umin[i]); u.append(np.inf)
-            for i in range(n):
-                rows += 1
-                A_rows.append(rows-1); A_cols.append(i); A_data.append(1.0)
-                l.append(-np.inf); u.append(umax[i])
 
         A = sp.csc_matrix((A_data, (A_rows, A_cols)), shape=(rows, n + 1))
         l = np.asarray(l); u = np.asarray(u)
@@ -152,6 +129,6 @@ class TableCollisionFilter:
         u_act = u_des.copy()
         u_nom = u_act[:7]
         a,h = self.hdot()
-        u_safe, _ = self.enforce_cbf_osqp(u_des=u_nom,a=a,h=h,alpha=self.alpha)
+        u_safe, _ = self.enforce_cbf_osqp(u_des=u_nom,a=a,h=h)
         u_act[:7] = u_safe
         return u_act

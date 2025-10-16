@@ -46,7 +46,7 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(action.copy())
+            action = self.safe_filter.apply(fixed_action.copy())
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
@@ -54,7 +54,7 @@ class Agent():
             tracker.log_step(t=t, obs=obs)
 
             if render:
-                frame = self.env.sim.render(width=640, height=480, camera_name="frontview")
+                frame = self.env.sim.render(width=640, height=480, camera_name="sideview")
                 frame = frame[::-1, :, :]
                 frames.append(frame)
 
