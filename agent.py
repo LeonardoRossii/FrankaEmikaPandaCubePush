@@ -6,6 +6,7 @@ from mpc import OSPMPCFilter
 from filters import FilterCBF
 from metrics import RolloutMetrics
 from table_collision import TableCollisionFilter
+from cube_drop import CubeDropFilter
 
 class Agent():
     def __init__(self, env):
@@ -15,6 +16,7 @@ class Agent():
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
         self.safe_filter = TableCollisionFilter(self.env)
+        self.safe_filter1 = CubeDropFilter(self.env)
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -41,12 +43,13 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        fixed_action = np.array([0.0,0.5,0,0,0,0,0,0])
+        #fixed_action = np.array([0.1,0.0,0,0,0,0,0,0])
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(fixed_action.copy())
+            action = self.safe_filter.apply(action.copy())
+            action = self.safe_filter1.apply(action.copy())
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True

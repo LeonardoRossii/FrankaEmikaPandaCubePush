@@ -110,7 +110,7 @@ class Push(SingleArmEnv):
             geom1 = self.sim.model.geom_id2name(contact.geom1)
             geom2 = self.sim.model.geom_id2name(contact.geom2)
             if ("table" in geom1 or "table" in geom2) and ("gripper" in geom1 or "gripper" in geom2 or "robot" in geom1 or "robot" in geom2):
-                table_contact= True
+                table_contact = True
         return table_contact
     
     def check_contact_finger_1_cube(self):
