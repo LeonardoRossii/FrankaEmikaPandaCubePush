@@ -43,7 +43,7 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        #fixed_action = np.array([0.1,0.0,0,0,0,0,0,0])
+        fixed_action = np.array([0.0,0.1,0,0,0,0,0,0])
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)

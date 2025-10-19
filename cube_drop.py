@@ -3,7 +3,7 @@ import numpy as np
 import scipy.sparse as sp
 
 class CubeDropFilter():
-    def __init__(self, env, alpha = 1.0, margin =0.0):
+    def __init__(self, env, alpha = 0.25, margin =0.0):
         self.env = env
         self.alpha = alpha
         self.margin = margin
@@ -17,8 +17,8 @@ class CubeDropFilter():
         Lx = self.env.table_full_size[0] / 2.0
         Ly = self.env.table_full_size[1] / 2.0
 
-        rx = 0.015
-        ry = 0.015
+        rx = 0.02
+        ry = 0.02
 
         mx = Lx - rx
         my = Ly - ry
