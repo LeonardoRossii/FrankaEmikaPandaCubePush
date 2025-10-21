@@ -13,7 +13,7 @@ class CEM:
         n_steps: int = 250,
         randoms: int = 1,
         gamma: float = 0.99,
-        pop_size: int = 40,
+        pop_size: int = 20,
         elite_frac: float = 0.2,
         top_frac: float = 0.2,
         sigma: float = 0.5,
@@ -54,9 +54,9 @@ class CEM:
         self.drop = drop
         
     def init(self):
-        #self.llm.generate_irreversible_events()
-        #if self.grf: self.llm.generate_reward()
-        #self.llm.generate_preference_setup()
+        self.llm.generate_irreversible_events()
+        if self.grf: self.llm.generate_reward()
+        self.llm.generate_preference_setup()
         self._lambda = self.init_lambda
         self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()
@@ -90,10 +90,12 @@ class CEM:
         best_returns = [-np.inf] * self.n_lambdas
         best_weights = np.stack([np.zeros(self.weight_dim).copy() for _ in range(self.n_lambdas)])
         for i, weight in enumerate(weights_pop):
-            returns,_, drop= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            returns,_, drop, ct= self.agent.evaluate(weight, self.n_steps, self.lambdas)
             if drop:
                 self.save_drop(weight)
                 self.drop += 1
+            if ct:
+                self.save_contact(weight)
             for n, ret in enumerate(returns):
                 if ret > best_returns[n]:
                     best_returns[n] = ret
@@ -141,6 +143,9 @@ class CEM:
     
     def save_drop(self, weight):
         np.savetxt(Path("weights") / "weights_drop.txt", weight)
+
+    def save_contact(self, weight):
+        np.savetxt(Path("weights") / "weights_contact.txt", weight)
 
     def train(self):
         self.init()

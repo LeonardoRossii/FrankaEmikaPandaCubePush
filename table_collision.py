@@ -3,222 +3,183 @@ import numpy as np
 import scipy.sparse as sp
 
 class TableCollisionFilter:
-    def __init__(self, env, alpha=10, margin=0.0):
+    def __init__(self, env):
         self.env = env
-        self.alpha = alpha
-        self.margin = margin
-        self.h = 0.0
-        self.grad = np.zeros(3)
-        self.pos = np.zeros(3)
+        self.alphas = None
+        self.cx = 0.0
+        self.cy = 0.0
+        self.cz = self.env.model.mujoco_arena.table_offset[2]
+        print(self.env.model.mujoco_arena.table_offset[2])
+        print(self.cz)
+        self.c = np.array([self.cx, self.cy, self.cz])
+        self.alpha = 3.0
+        self.robot_config = {
+            "bodies": {
+                "gripper0_eef": {"alpha": 10.0, "margin": 0.05, "e1": 0.2, "e2":0.1},
+                "gripper0_leftfinger": {"alpha": 10.0, "margin": 0.05, "e1": 0.2, "e2":0.1},
+                "gripper0_rightfinger": {"alpha": 10.0, "margin": 0.05, "e1": 0.2, "e2":0.1},
+                "robot0_link7": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link6": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link5": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link4": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link3": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+            },
+            "geoms": {
+                "robot0_link7_collision": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link6_collision": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link5_collision": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link4_collision": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+                "robot0_link3_collision": {"alpha": 2, "margin": 0.05, "e1": 0.2, "e2":0.2},
+            }
+        }
 
-    def superquadric(self, p):
-        e1, e2 = 1.0, 1.0
-        kappa = 1e-12
 
-        cx = 0.0
-        cy = 0.0
-        cz = self.env.model.mujoco_arena.table_offset[2]
+    def cbf(self, p, margin, e1= 0.1, e2 = 0.1):
 
-        Lx = float(self.env.table_full_size[0]) / 2.0
-        Ly = float(self.env.table_full_size[1]) / 2.0
-        Lz = float(self.env.table_full_size[2]) / 2.0
+        e1 = max(e1, 0.5)
 
-        x, y, z = float(p[0]), float(p[1]), float(p[2])
-        self.pos = np.array([x, y, z], dtype=float)
+        k = 1e-3
+
+        Lx = self.env.table_full_size[0] / 2.0
+        Ly = self.env.table_full_size[1] / 2.0
+        Lz = self.env.table_full_size[2] / 2.0
+
+        cx = self.cx
+        cy = self.cy
+        cz = self.cz
+
+        x = p[0]
+        y = p[1]
+        z = p[2]
 
         ux = (x - cx) / Lx
         uy = (y - cy) / Ly
         uz = (z - cz) / Lz
 
-        ax = np.sqrt(ux * ux + kappa)
-        ay = np.sqrt(uy * uy + kappa)
-        az = np.sqrt(uz * uz + kappa)
+        ax = np.sqrt(ux * ux + k)
+        ay = np.sqrt(uy * uy + k)
+        az = np.sqrt(uz * uz + k)
 
         sgnx = ux / ax
         sgny = uy / ay
         sgnz = uz / az
 
-        Sx = (ax) ** (2.0 / e2)
-        Sy = (ay) ** (2.0 / e2)
-        Axy = (Sx + Sy) ** (e2 / e1) 
-        Sz = (az) ** (2.0 / e1)      
-        sum_S = Sx + Sy
+        Sx = ax ** (2.0 / e2)
+        Sy = ay ** (2.0 / e2)
+        Sxy = Sx + Sy
+        Axy = Sxy ** (e2 / e1) 
+        Sz = az ** (2.0 / e1)      
+        
         F = Axy + Sz
-
-        self.h = F - (1.0 + self.margin)
+        h = F - (1.0 + margin)
 
         dSx_dx = (2.0 / e2) * (ax ** (2.0 / e2 - 1.0)) * sgnx * (1.0 / Lx)
         dSy_dy = (2.0 / e2) * (ay ** (2.0 / e2 - 1.0)) * sgny * (1.0 / Ly)
-        common_xy = (e2 / e1) * (sum_S ** (e2 / e1 - 1.0)) 
-        dA_dx = common_xy * dSx_dx
-        dA_dy = common_xy * dSy_dy
+        dA_dx = (e2 / e1) * (Sxy ** (e2 / e1 - 1.0))  * dSx_dx
+        dA_dy = (e2 / e1) * (Sxy ** (e2 / e1 - 1.0))  * dSy_dy
         dSz_dz = (2.0 / e1) * (az ** (2.0 / e1 - 1.0)) * sgnz * (1.0 / Lz)
 
-        self.grad = np.array([dA_dx, dA_dy, dSz_dz], dtype=float)
-        return self.h, self.grad
+        H = np.array([dA_dx, dA_dy, dSz_dz])
 
-    def bodies(self):
-        all_bodies = [self.env.sim.model.body_id2name(i)for i in range(self.env.sim.model.nbody)]
-        #print(all_bodies)
-        bodies = ["gripper0_eef",
-                  "robot0_link7",
-                  "robot0_link6",
-                  "robot0_link5",
-                  "robot0_link4"
-                  ]
+        return h, H
+
+    def constraints(self):
+
+        As, bs = [], []
+        sim = self.env.sim
+        model = sim.model
+        robot_joint_idx = self.env.robots[0].joint_indexes
+
+        for body_name, params in self.robot_config["bodies"].items():
+            alpha = params["alpha"]
+            margin = params["margin"]
+
+            x = sim.data.body_xpos[model.body_name2id(body_name)][:3]
+            if np.linalg.norm(x[2] - self.cz) < 10.0:
+                h, H = self.cbf(x, margin, e1=params["e1"], e2=params["e2"])
+                bs.append(-alpha * h)
+                """print("Body name", body_name)
+                print("H", H)
+                print("\n\n")"""
+                jacp = np.reshape(sim.data.get_body_jacp(body_name), (3, -1))
+                jacr = np.reshape(sim.data.get_body_jacr(body_name), (3, -1))
+                J_full = np.vstack((jacp, jacr))
+
+                J_robot_pos = J_full[:3, robot_joint_idx]
+                a = (H @ J_robot_pos).ravel()
+                As.append(a)
+
+        for geom_name, params in self.robot_config["geoms"].items():
+            alpha = params["alpha"]
+            margin = params["margin"]
+
+            x = sim.data.geom_xpos[model.geom_name2id(geom_name)][:3]
+            if np.linalg.norm(x[2] - self.cz) < 10.0:
+                h, H = self.cbf(x, margin, e1=params["e1"], e2=params["e2"])
+                bs.append(-alpha * h)
+
+                jacp = np.reshape(sim.data.get_geom_jacp(geom_name), (3, -1))
+                jacr = np.reshape(sim.data.get_geom_jacr(geom_name), (3, -1))
+                J_full = np.vstack((jacp, jacr))
+
+                J_robot_pos = J_full[:3, robot_joint_idx]
+                a = (H @ J_robot_pos).ravel()
+                As.append(a)
+        return As, bs
+
+
+
+    def solve(self, u_des, a_list, b_list, rho=1e5):
+        if len(a_list)>0:
         
-        n = len(bodies)
-        
-        xs = [None]*n
-        hs = [None]*n
-        Hs = [None]*n
-        Js = [None]*n
-        As = [None]*n
+            u_des = np.asarray(u_des, dtype=float).reshape(-1)
+            n = u_des.size
 
-        for i in range(n):
-            xs[i] = self.env.sim.data.body_xpos[self.env.sim.model.body_name2id(bodies[i])][:3]
-            hs[i], Hs[i] = self.superquadric(xs[i])
+            a_arr = [np.asarray(ai, dtype=float).reshape(n) for ai in a_list]
+            b_arr = [float(hi) for hi in b_list]
+            m = len(a_arr)
 
-            jacp = self.env.sim.data.get_body_jacp(bodies[i]) 
-            jacr = self.env.sim.data.get_body_jacr(bodies[i])
-            jacp = np.reshape(jacp, (3, -1))
-            jacr = np.reshape(jacr, (3, -1))
-            J_full = np.vstack([jacp, jacr]) 
-            qvel_idx = self.env.robots[0].joint_indexes
-            J_robot = J_full[:, qvel_idx]
-            J_robot_pos = J_robot[0:3, :]
-            Js[i] = J_robot_pos
-            gmax = 5.0  # tune
-            Js[i] = np.clip(Js[i], -gmax, gmax)
-            As[i] = (Hs[i] @ Js[i]).ravel()
-        
-        print("A[gripper]", As[0])
-        print("A[link7]", As[1])
+            eps = 1e-9
+            Pu = sp.eye(n, format="csc") * (1.0 + eps)          
+            Pd = sp.csr_matrix([[float(rho) + eps]])            
+            P = sp.block_diag([Pu, Pd], format="csc")
 
+            q = np.zeros(n + 1)
+            q[:n] = -u_des
 
-        return As, hs
+            Au = sp.csr_matrix(np.vstack(a_arr))                
+            ones = sp.csr_matrix(np.ones((m, 1)))               
+            A_cbf = sp.hstack([Au, ones], format="csc")         
+            l_cbf = b_arr                                       
+            u_cbf = np.full(m, np.inf)                         
 
-
-    def enforce_cbf_osqp(self, u_des, a_list, h_list, rho = 1e5,  u_min=None, u_max=None, slack_mode= "per"):
-
-
-
-        u_des = np.asarray(u_des).reshape(-1) # Force u_eds to 1-D array
-        n = u_des.size
-
-        a_arr = [np.asarray(ai, dtype=float).reshape(n) for ai in a_list]
-        h_arr = [float(hi) for hi in h_list]
-        m = len(a_arr)
-        assert len(h_arr) == m
-
-
-        b_arr = np.array([-self.alpha * hi for hi in h_arr], dtype=float)
-
-        if slack_mode == "per":
-            nd = m
-        elif slack_mode == "shared":
-            nd = 1
-        else:
-            raise ValueError("slack_mode must be 'per' or 'shared'")
-
-        eps = 1e-9
-
-        Pu = sp.eye(n, format="csc") * (1.0 + eps)
-
-        if slack_mode == "per":
-            if np.isscalar(rho):
-                rho_vec = np.full(nd, float(rho))
-            else:
-                rho_vec = np.asarray(rho, dtype=float).reshape(nd)
-            Pd = sp.diags(rho_vec + eps, format="csc")
-        else:
-            Pd = sp.csr_matrix([[float(rho) + eps]])
-
-        P = sp.block_diag([Pu, Pd], format="csc")
-        q = np.zeros(n + nd)
-        q[:n] = -u_des
-
-        A_blocks = []
-        l_list, u_list = [], []
-
-        # 1) CBF constraints: a_i^T u + delta_i >= b_i
-        # For shared slack, delta is the same column for all rows.
-        if slack_mode == "per":
-            # Build [A_u | I_m] where A_u has rows a_i^T
-            Au = sp.csr_matrix(np.vstack([ai for ai in a_arr]))  # (m × n)
-            Id = sp.eye(m, format="csc")                         # (m × m)
-            A_cbf = sp.hstack([Au, Id], format="csc")            # (m × (n+m))
-        else:
-            Au = sp.csr_matrix(np.vstack([ai for ai in a_arr]))  # (m × n)
-            ones = sp.csr_matrix(np.ones((m, 1)))                # (m × 1)
-            A_cbf = sp.hstack([Au, ones], format="csc")          # (m × (n+1))
-
-        A_blocks.append(A_cbf)
-        l_list.extend(b_arr.tolist())
-        u_list.extend([np.inf]*m)
-
-        # 2) Slack nonnegativity: delta >= 0
-        if slack_mode == "per":
-            A_s = sp.hstack([sp.csr_matrix((m, n)), sp.eye(m, format="csc")], format="csc")
-            A_blocks.append(A_s)
-            l_list.extend([0.0]*m)
-            u_list.extend([np.inf]*m)
-        else:
             A_s = sp.hstack([sp.csr_matrix((1, n)), sp.csr_matrix([[1.0]])], format="csc")
-            A_blocks.append(A_s)
-            l_list.append(0.0)
-            u_list.append(np.inf)
+            l_s = np.array([0.0])
+            u_s = np.array([np.inf])
 
-        # 3) Box constraints on u (optional but recommended)
-        if u_min is None:
-            u_min = getattr(self, "u_min", None)
-        if u_max is None:
-            u_max = getattr(self, "u_max", None)
+            A = sp.vstack([A_cbf, A_s], format="csc")
+            l = np.concatenate([l_cbf, l_s])
+            u = np.concatenate([u_cbf, u_s])
 
-        if u_min is not None and u_max is not None:
-            u_min = np.asarray(u_min, dtype=float).reshape(n)
-            u_max = np.asarray(u_max, dtype=float).reshape(n)
-            Iu = sp.eye(n, format="csc")
+            prob = osqp.OSQP()
+            prob.setup(P=P, q=q, A=A, l=l, u=u,
+                    verbose=False, polish=True, eps_abs=1e-6, eps_rel=1e-6)
+            res = prob.solve()
 
-            #  u <= u_max
-            A_ub = sp.hstack([Iu, sp.csr_matrix((n, nd))], format="csc")
-            A_blocks.append(A_ub)
-            l_list.extend([-np.inf]*n)
-            u_list.extend(u_max.tolist())
+            if res.info.status_val not in (1, 2):
+                return u_des, 0.0
 
-            #  -u <= -u_min  (i.e., u >= u_min)
-            A_lb = sp.hstack([-Iu, sp.csr_matrix((n, nd))], format="csc")
-            A_blocks.append(A_lb)
-            l_list.extend([-np.inf]*n)
-            u_list.extend((-u_min).tolist())
-
-        # Stack
-        A = sp.vstack(A_blocks, format="csc")
-        l = np.asarray(l_list, dtype=float)
-        u = np.asarray(u_list, dtype=float)
-
-        # --- solve ---
-        prob = osqp.OSQP()
-        prob.setup(P=P, q=q, A=A, l=l, u=u, verbose=False, polish=True, eps_abs=1e-6, eps_rel=1e-6)
-        res = prob.solve()
-
-        if res.info.status_val not in (1, 2):
-            # Fallback: clamp u_des to bounds if present, else return u_des
-            if u_min is not None and u_max is not None:
-                u_fallback = np.clip(u_des, u_min, u_max)
-            else:
-                u_fallback = u_des
-            return u_fallback, (np.zeros(nd) if slack_mode=="per" else 0.0)
-
-        x = res.x
-        u_safe = x[:n]
-        delta = x[n:] if slack_mode == "per" else float(x[n])
-        return u_safe, delta
+            x = res.x
+            u_safe = x[:n]
+            delta = float(x[n])
+            return u_safe, delta
+        else:
+            return u_des, None
 
     def apply(self, u_des):
         u_act = u_des.copy()
         u_nom = u_act[:7]
-        a_list, h_list = self.bodies()
-        u_safe, _ = self.enforce_cbf_osqp(u_des=u_nom,a_list=a_list,h_list=h_list)
+        a_list, h_list = self.constraints()
+        u_safe, _ = self.solve(u_nom, a_list, h_list)
         u_act[:7] = u_safe
         return u_act

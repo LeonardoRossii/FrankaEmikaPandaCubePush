@@ -17,9 +17,9 @@ class CubeDropFilter():
         Lx = self.env.table_full_size[0] / 2.0
         Ly = self.env.table_full_size[1] / 2.0
 
-        rx = 0.02
-        ry = 0.02
-
+        rx = 0.3
+        ry = 0.01
+        
         mx = Lx - rx
         my = Ly - ry
      
@@ -72,7 +72,6 @@ class CubeDropFilter():
         H_sem = self.H.reshape(1, 2)
 
         part = None
-        print(part)
 
         """all_sites = [self.env.sim.model.site_id2name(i) for i in range(self.env.sim.model.nsite)]
         print(all_sites)"""

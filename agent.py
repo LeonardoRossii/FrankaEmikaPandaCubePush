@@ -43,16 +43,24 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        fixed_action = np.array([0.0,0.1,0,0,0,0,0,0])
+        fixed_action = np.array([0.0,0.1,0.0,0.0,0.,0.0,0,0])
+        ct = False
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
             action = self.safe_filter.apply(action.copy())
             action = self.safe_filter1.apply(action.copy())
+            #action[-2]= 0.0
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
+
+            print(self.env.check_contact_table())
+
+            if(not ct and self.env.check_contact_table()):
+                ct = True
+                print("contact table")
 
             tracker.log_step(t=t, obs=obs)
 
@@ -64,7 +72,7 @@ class Agent():
             for i in range(len(rewards)):
                 episode_returns[i] += float(rewards[i]) * math.pow(gamma, t)
 
-            if done or self.env.check_success() or self.env.check_failure():
+            if done or self.env.check_success() or self.env.check_failure():               
                 accomplished = bool(self.env.check_success())
                 metrics = tracker.to_dict(accomplished)
                 break
@@ -74,4 +82,4 @@ class Agent():
             utils.save_video(frames, f"video{video_i}.mp4", fps=20)
 
         self.env.close()
-        return episode_returns, metrics, drop
+        return episode_returns, metrics, drop, ct
