@@ -42,11 +42,16 @@ FORMALIZATION:
 - reward = lambda*(reward) + (1-lambda)*irr_events_reward
 
 STRUCTURE:
-def get_reward(env,_):
-  lambda = 0.5
-  reward = 0
-  # Compute reward function shaping terms
-  return reward
+def get_reward(env,_,lambdas):
+  rewards = []
+  for lambda in lambdas:  
+    reward = 0
+
+    # Compute reward function shaping terms
+    
+    rewards.append(reward)
+  
+  return rewards
 
 def get_success_condition(env):
     return success

@@ -53,6 +53,7 @@ class GPT:
         except Exception as err:
             raise RuntimeError(f"OpenAI call failed: {err}")
         self.output_ie = response.output_text 
+        print(self.output_ie)
         return self.output_ie
     
     def build_reward_prompt(self):

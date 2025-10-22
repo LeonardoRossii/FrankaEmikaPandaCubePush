@@ -1,12 +1,10 @@
-import os
 import math
 import utils
 import numpy as np
-from mpc import OSPMPCFilter
-from filters import FilterCBF
 from metrics import RolloutMetrics
-from table_collision import TableCollisionFilter
-from cube_drop import CubeDropFilter
+from table_collision import TableTopCBF
+from table_collision import CubeDropCBF
+from table_collision import CollisionQPFilter
 
 class Agent():
     def __init__(self, env):
@@ -15,8 +13,10 @@ class Agent():
         self.output_size = self.env.action_dim
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
-        self.safe_filter = TableCollisionFilter(self.env)
-        self.safe_filter1 = CubeDropFilter(self.env)
+        table_collision_filter = TableTopCBF(self.env)
+        cube_drop_filter = CubeDropCBF(self.env)
+        self.safe_filter = CollisionQPFilter(self.env, [table_collision_filter, cube_drop_filter])
+        #self.safe_filter = CollisionQPFilter(self.env, [cube_drop_filter])
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -43,36 +43,36 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        fixed_action = np.array([0.0,0.1,0.0,0.0,0.,0.0,0,0])
+        fixed_action = np.array([0.0,0.1,0.0,0.0,0.0,0.0,0,0])
         ct = False
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action = self.safe_filter.apply(action.copy())
-            action = self.safe_filter1.apply(action.copy())
-            #action[-2]= 0.0
+            action, efforts = self.safe_filter.apply(fixed_action.copy())
+            print(efforts)
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
 
-            print(self.env.check_contact_table())
+            #print(self.env.check_contact_table())
 
             if(not ct and self.env.check_contact_table()):
                 ct = True
-                print("contact table")
+                #print("contact table")
 
             tracker.log_step(t=t, obs=obs)
 
             if render:
-                frame = self.env.sim.render(width=640, height=480, camera_name="sideview")
+                frame = self.env.sim.render(width=640, height=480, camera_name="frontview")
                 frame = frame[::-1, :, :]
                 frames.append(frame)
 
             for i in range(len(rewards)):
                 episode_returns[i] += float(rewards[i]) * math.pow(gamma, t)
 
-            if done or self.env.check_success() or self.env.check_failure():               
+            if done or self.env.check_success() or self.env.check_failure():
+            #if done or self.env.check_success():               
                 accomplished = bool(self.env.check_success())
                 metrics = tracker.to_dict(accomplished)
                 break

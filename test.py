@@ -29,7 +29,7 @@ _ = env_.reset()
 agent = Agent(env_)
 safe_filter = FilterCBF(env_)
 llm = GPT(client)
-weights = np.loadtxt(Path("weights") / "weights_drop.txt")
+weights = np.loadtxt(Path("weights") / "weights.txt")
 _,_,_,_ = agent.evaluate(weights, env_.horizon, [0], render=True)
 env_.close()
 

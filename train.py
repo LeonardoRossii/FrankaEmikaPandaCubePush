@@ -26,9 +26,6 @@ env = suite.make(
 )
 
 llm = GPT(client)
-#llm.generate_preference_setup()
-#importlib.reload(agent)
-
 obs = env.reset()
 agent = agent.Agent(env)
 opt = CEM(agent, llm, reward_gen=True)

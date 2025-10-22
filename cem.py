@@ -13,7 +13,7 @@ class CEM:
         n_steps: int = 250,
         randoms: int = 1,
         gamma: float = 0.99,
-        pop_size: int = 20,
+        pop_size: int = 40,
         elite_frac: float = 0.2,
         top_frac: float = 0.2,
         sigma: float = 0.5,
@@ -54,9 +54,9 @@ class CEM:
         self.drop = drop
         
     def init(self):
-        self.llm.generate_irreversible_events()
+        """self.llm.generate_irreversible_events()
         if self.grf: self.llm.generate_reward()
-        self.llm.generate_preference_setup()
+        self.llm.generate_preference_setup()"""
         self._lambda = self.init_lambda
         self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()

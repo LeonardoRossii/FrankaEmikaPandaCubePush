@@ -51,7 +51,6 @@ class Push(SingleArmEnv):
         self.table_offset = np.array((0, 0, 0.95))
         self.goal_pos_offset = np.array([0.2, 0])
 
-        self.safety_filter_effort = 0.0
 
         super().__init__(
             robots=robots,
@@ -109,7 +108,7 @@ class Push(SingleArmEnv):
         for contact in self.sim.data.contact:
             geom1 = self.sim.model.geom_id2name(contact.geom1)
             geom2 = self.sim.model.geom_id2name(contact.geom2)
-            if ("table" in geom1 or "table" in geom2) and ("robot" in geom1 or "robot" in geom2):
+            if ("table" in geom1 or "table" in geom2) and ("gripper" in geom1 or "gripper" in geom2 or "robot" in geom1 or "robot" in geom2):
                 table_contact = True
         return table_contact
     
@@ -236,7 +235,7 @@ class Push(SingleArmEnv):
             def cube_drop(obs_cache):
                 if "cube_pos" in obs_cache:
 
-                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < -0.01
+                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < -0.025
 
             @sensor(modality=modality)
             def cube_quat(obs_cache):
@@ -271,8 +270,6 @@ class Push(SingleArmEnv):
         cube_xy = self.sim.data.body_xpos[self.cube_body_id][:2].copy()
         self.goal_xy =  cube_xy + self.goal_pos_offset
         self.sim.forward()
-        cube_pos = self.sim.data.body_xpos[self.cube_body_id]
-        self.safety_filter_effort = 0.0
 
     def visualize(self, vis_settings):
         super().visualize(vis_settings=vis_settings)

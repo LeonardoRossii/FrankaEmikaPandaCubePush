@@ -17,7 +17,7 @@ class CubeDropFilter():
         Lx = self.env.table_full_size[0] / 2.0
         Ly = self.env.table_full_size[1] / 2.0
 
-        rx = 0.3
+        rx = 0.2
         ry = 0.01
         
         mx = Lx - rx
@@ -56,31 +56,12 @@ class CubeDropFilter():
         H = np.array([[dh_dxc, dh_dyc]])
         self.H = H
 
-    def contact(self):
-        cubeName = "cube_g0"
-        tableName = "table"
-        for contact in self.env.sim.data.contact:
-            geom1 = self.env.sim.model.geom_id2name(contact.geom1)
-            geom2 = self.env.sim.model.geom_id2name(contact.geom2)
-            if ((cubeName in geom1) or (cubeName in geom2)) and ((tableName not in geom1) and (tableName not in geom2)):
-                if cubeName in geom1: return geom2
-                else: return geom1
-
     def hdot(self):
         self.superquadric()
         h = float(self.h)
         H_sem = self.H.reshape(1, 2)
 
         part = None
-
-        """all_sites = [self.env.sim.model.site_id2name(i) for i in range(self.env.sim.model.nsite)]
-        print(all_sites)"""
-
-        """all_geoms = [self.env.sim.model.geom_id2name(i) for i in range(self.env.sim.model.ngeom)]
-        print(all_geoms)"""
-
-        """all_bodies = [self.env.sim.model.body_id2name(i)for i in range(self.env.sim.model.nbody)]
-        print(all_bodies)"""
 
         if part is None:
             ee_site_name = self.env.robots[0].gripper.important_sites["grip_site"]
