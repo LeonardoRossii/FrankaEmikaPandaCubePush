@@ -91,3 +91,19 @@ def same_best_weight(weights, rtol = 1e-02, atol= 1e-02):
         np.allclose(weights[i], weights[i + 1], rtol, atol)
         for i in range(len(weights) - 1)
         )
+
+def weighted_mean(elite_scores, elite_weights, softmax_temp = 0.5, w_max = 0.5):
+    shift = elite_scores.max()
+    logits = (elite_scores - shift) / max(1e-8, softmax_temp)
+    w = np.exp(logits)
+    w_sum = w.sum()
+    if not np.isfinite(w_sum) or w_sum <= 0:
+        w = np.ones_like(elite_scores) / len(elite_scores)
+    else:
+        w /= w_sum
+    
+    if w.max() > w_max:
+        w = np.clip(w, None, w_max)
+        w /= w.sum() 
+    weighted_mean_score = (elite_weights * w[:, None]).sum(axis=0)
+    return weighted_mean_score

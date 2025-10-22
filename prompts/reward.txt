@@ -21,9 +21,15 @@ FAILURE CONDITION:
 Consider the task failed if the distance of the end effector from the blue cube is more than 0.2m and if one Irreversible Event occurs.
 
 IRREVERSIBLE EVENTS
-A list of Irreversible Events associated to this task will be provided below.
-Define, if applicable, in conformity with the environment class and simplicity of its creation, a dense penalty term for each Irreversible event related to “how far” the agent currently is from triggering the Irreversible Events.
-The sum of all the dense shaping terms must be defined in a distinct reward-shaping term named irr_events_reward.
+Below is a list of Irreversible Events (IEs) associated with this task.
+For each Irreversible Event:
+Define, only if applicable, a dense penalty term that measures how far the agent currently is from triggering that event.
+The definition must be consistent with both the environment class and the simplicity of its implementation.
+If the environment includes safety filters or protective mechanisms that can prevent the occurrence of an Irreversible Event, you may use the filter’s effort or activation signal, as exposed in the environment API, to construct the dense penalty term.
+
+Important:
+If it is not possible to correctly, reliably, or meaningfully define a dense penalty term for a given Irreversible Event — even when considering available safety filter information — do not include that event in the reward shaping.
+Finally, the sum of all valid dense penalty terms must be combined into a distinct reward-shaping term named irr_events_reward.
 
 HINTS:
 - Define dense shaping terms that clearly guides the agent for for task completion.

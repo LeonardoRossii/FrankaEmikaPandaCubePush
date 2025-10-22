@@ -47,10 +47,12 @@ class Push(SingleArmEnv):
         self.reward_shaping = reward_shaping
         self.use_object_obs = use_object_obs
         self.placement_initializer = placement_initializer
+        
+        self.robot_table_collision_avoidance_safety_filter_effort = 0.0
+        self.cube_drop_off_table_avoidance_safety_filter_effort = 0.0
 
         self.table_offset = np.array((0, 0, 0.95))
         self.goal_pos_offset = np.array([0.2, 0])
-
 
         super().__init__(
             robots=robots,
@@ -102,6 +104,18 @@ class Push(SingleArmEnv):
             np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]-self.table_full_size[1]/2),
             np.linalg.norm(self.sim.data.body_xpos[self.cube_body_id][1]+self.table_full_size[1]/2)
         )
+    
+    def set_robot_table_collision_avoidance_safety_filter_effort(self, effort):
+        self.robot_table_collision_avoidance_safety_filter_effort = effort
+
+    def get_robot_table_collision_avoidance_safety_filter_effort(self):
+        return self.robot_table_collision_avoidance_safety_filter_effort
+    
+    def set_cube_drop_off_table_avoidance_safety_filter_effort(self, effort):
+        self.cube_drop_off_table_avoidance_safety_filter_effort = effort
+
+    def get_cube_drop_off_table_avoidance_safety_filter_effort(self):
+        return self.cube_drop_off_table_avoidance_safety_filter_effort
      
     def check_contact_table(self):
         table_contact= False
@@ -269,6 +283,8 @@ class Push(SingleArmEnv):
 
         cube_xy = self.sim.data.body_xpos[self.cube_body_id][:2].copy()
         self.goal_xy =  cube_xy + self.goal_pos_offset
+        self.table_robot_collision_avoidance_safety_filter_effort = 0.0
+        self.cube_drop_off_table_avoidance_safety_filter_effort = 0.0
         self.sim.forward()
 
     def visualize(self, vis_settings):

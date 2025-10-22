@@ -16,7 +16,6 @@ class Agent():
         table_collision_filter = TableTopCBF(self.env)
         cube_drop_filter = CubeDropCBF(self.env)
         self.safe_filter = CollisionQPFilter(self.env, [table_collision_filter, cube_drop_filter])
-        #self.safe_filter = CollisionQPFilter(self.env, [cube_drop_filter])
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -35,7 +34,7 @@ class Agent():
     def forward(self, x):
         return np.dot(self.A, x) + self.b
 
-    def evaluate(self, weights, max_n_timesteps, lambdas, gamma=0.99, render=False, video_i=1):
+    def evaluate(self, weights, max_n_timesteps, lambdas, gamma=0.99, render=False, video_i=1, plot = False):
         self.set_weights(weights)
         obs = self.env.reset()
         state = self.get_state(obs)
@@ -43,23 +42,28 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        fixed_action = np.array([0.0,0.1,0.0,0.0,0.0,0.0,0,0])
+        fixed_action = np.array([0.0,0,0.0,0.0,0.0,0.0,0,0])
         ct = False
+        rtcasf = []
+        cdtasf = []
 
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action, efforts = self.safe_filter.apply(fixed_action.copy())
+            action, efforts = self.safe_filter.apply(action.copy())
             print(efforts)
+            eff1 = efforts["TableTopCBF"]["effort_l2"]
+            eff2 = efforts["CubeDropCBF"]["effort_l2"]
+            rtcasf.append(eff1)
+            cdtasf.append(eff2)
+            self.env.set_robot_table_collision_avoidance_safety_filter_effort(eff1)
+            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(eff2)
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
 
-            #print(self.env.check_contact_table())
-
             if(not ct and self.env.check_contact_table()):
                 ct = True
-                #print("contact table")
 
             tracker.log_step(t=t, obs=obs)
 
@@ -71,8 +75,7 @@ class Agent():
             for i in range(len(rewards)):
                 episode_returns[i] += float(rewards[i]) * math.pow(gamma, t)
 
-            if done or self.env.check_success() or self.env.check_failure():
-            #if done or self.env.check_success():               
+            if done or self.env.check_success() or self.env.check_failure():              
                 accomplished = bool(self.env.check_success())
                 metrics = tracker.to_dict(accomplished)
                 break
@@ -82,4 +85,18 @@ class Agent():
             utils.save_video(frames, f"video{video_i}.mp4", fps=20)
 
         self.env.close()
+
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(figsize=(10, 5))
+            plt.plot(rtcasf, label="TableTopCBF Effort (rtcasf)")
+            plt.plot(cdtasf, label="CubeDropCBF Effort (cdtasf)")
+            plt.xlabel("Timestep")
+            plt.ylabel("Safety Filter Effort (L2 Norm)")
+            plt.title("Safety Filter Efforts over Time")
+            plt.legend()
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
         return episode_returns, metrics, drop, ct

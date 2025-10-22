@@ -23,7 +23,7 @@ class CEM:
         pop_min: int = 8,
         elite_min: int = 2,
         n_lambdas = 3,
-        init_lambda = 0.5,
+        init_lambda = 0.3,
         drop = 0,
     ):
         self.agent = agent
@@ -117,7 +117,8 @@ class CEM:
         self.best_weight = elite_weights[-1].copy()
         return elite_weights, elite_scores
 
-    def update(self, elite_weights):
+    def update(self, elite_weights, elite_scores):
+        #elite_mean = utils.weighted_mean(elite_weights, elite_scores)
         elite_mean = np.mean(elite_weights, axis=0)
         self.mean_weight = self.alpha * elite_mean + (1 - self.alpha) * self.mean_weight        
         elite_std = np.std(elite_weights, axis=0)
@@ -153,8 +154,8 @@ class CEM:
             self.log(i)
             n_elite, weights_pop = self.populate()
             returns, best_weights = self.evaluate(weights_pop)
-            elite_weights,_ = self.elitism(returns, weights_pop, n_elite)
-            self.update(elite_weights)
+            elite_weights, elite_scores = self.elitism(returns, weights_pop, n_elite)
+            self.update(elite_weights, elite_scores)
             #if i%2==0:
             #    if not utils.same_best_weight(best_weights):
             #        self.feedback(best_weights)

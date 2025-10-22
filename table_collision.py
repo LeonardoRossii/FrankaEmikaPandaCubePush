@@ -15,18 +15,18 @@ class TableTopCBF(CBFModule):
                 "gripper0_eef":        {"alpha": 2.0, "margin": 0.01},
                 "gripper0_leftfinger": {"alpha": 2.0, "margin": 0.01},
                 "gripper0_rightfinger":{"alpha": 2.0, "margin": 0.01},
-                "robot0_link7":        {"alpha": 0.5, "margin": 0.05},
-                "robot0_link6":        {"alpha": 0.5, "margin": 0.05},
-                "robot0_link5":        {"alpha": 0.5, "margin": 0.05},
-                "robot0_link4":        {"alpha": 0.5, "margin": 0.05},
-                "robot0_link3":        {"alpha": 0.5, "margin": 0.05},
+                "robot0_link7":        {"alpha": 1.0, "margin": 0.05},
+                "robot0_link6":        {"alpha": 1.0, "margin": 0.05},
+                "robot0_link5":        {"alpha": 1.0, "margin": 0.05},
+                "robot0_link4":        {"alpha": 1.0, "margin": 0.05},
+                "robot0_link3":        {"alpha": 1.0, "margin": 0.05},
             },
             "geoms": {
-                "robot0_link7_collision": {"alpha": 0.5, "margin": 0.05},
-                "robot0_link6_collision": {"alpha": 0.5, "margin": 0.05},
-                "robot0_link5_collision": {"alpha": 0.5, "margin": 0.05},
-                "robot0_link4_collision": {"alpha": 0.5, "margin": 0.05},
-                "robot0_link3_collision": {"alpha": 0.5, "margin": 0.05},
+                "robot0_link7_collision": {"alpha": 1.0, "margin": 0.05},
+                "robot0_link6_collision": {"alpha": 1.0, "margin": 0.05},
+                "robot0_link5_collision": {"alpha": 1.0, "margin": 0.05},
+                "robot0_link4_collision": {"alpha": 1.0, "margin": 0.05},
+                "robot0_link3_collision": {"alpha": 1.0, "margin": 0.05},
             }
         }
 
@@ -42,7 +42,6 @@ class TableTopCBF(CBFModule):
         sim = env.sim
         model = sim.model
         robot_joint_idx = env.robots[0].joint_indexes
-        print(robot_joint_idx)
 
         for body_name, params in self.robot_config["bodies"].items():
             alpha = float(params["alpha"]); margin = float(params["margin"])
@@ -75,20 +74,20 @@ class CubeDropCBF(CBFModule):
     def __init__(self, env):
         self.env = env
         self.cfg = {
-            "alpha": 0.25,
-            "margin": 0.03,
-            "rx": 0.3,
-            "ry": 0.0,
+            "alpha": 1.0,
+            "margin": 0.01,
+            "rx": 0.020, # box half size
+            "ry": 0.020, # box half size
             "e1": 0.1,
             "e2": 0.1,
-            "kappa": 1e-8,
+            "kappa": 1e-12,
         }
 
     def bf(self):
         cfg = self.cfg
         cx, cy = 0.0, 0.0
-        Lx = self.env.table_full_size[0] / 2.0
-        Ly = self.env.table_full_size[1] / 2.0
+        Lx = self.env.table_full_size[0]/2.0
+        Ly = self.env.table_full_size[1]/2.0
         mx, my = Lx - cfg["rx"], Ly - cfg["ry"]
         p = self.env.sim.data.body_xpos[self.env.cube_body_id]
         xc, yc = p[0], p[1]
@@ -120,8 +119,15 @@ class CubeDropCBF(CBFModule):
         J_full = np.vstack([jacp, jacr])
         qvel_idx = self.env.robots[0].joint_indexes
         J_robot = J_full[:, qvel_idx]
-        J_pos = J_robot[:3, :]       
+        J_pos = J_robot[:3, :]
         J_xy = J_pos[:2, :]
+
+        for i in range(self.env.sim.data.ncon):
+            if (con.geom1 == "cube_main") or (con.geom2 == "cube_main"):
+                con = sim.data.contact[i]
+            print(con.pos)
+
+
         a = (H_xy.reshape(1, 2) @ J_xy).ravel()
         alpha = float(self.cfg["alpha"])
         b = -alpha * h
