@@ -51,8 +51,9 @@ class Agent():
             state = self.get_state(obs)
             action = self.forward(state)
             action, efforts = self.safe_filter.apply(action.copy())
-            print(efforts)
+            #print(efforts)
             eff1 = efforts["TableTopCBF"]["effort_l2"]
+
             eff2 = efforts["CubeDropCBF"]["effort_l2"]
             rtcasf.append(eff1)
             cdtasf.append(eff2)
