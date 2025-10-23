@@ -1,21 +1,13 @@
+import osqp
 import numpy as np
 import scipy.sparse as sp
-import osqp
 
-
-# ------------------------------ Base CBF module ------------------------------
 class CBFModule:
     def constraints(self, _):
-        """
-        Return:
-            As: list[np.ndarray shape (n_joints,)]
-            bs: list[float]
-        representing inequalities a_i @ qdot <= b_i
-        """
         raise NotImplementedError
+    def objective_terms(self, _):
+        return None
 
-
-# ------------------------------ Table plane CBF ------------------------------
 class TableTopCBF(CBFModule):
     def __init__(self, env):
         self.env = env
@@ -40,8 +32,7 @@ class TableTopCBF(CBFModule):
             }
         }
 
-    @staticmethod
-    def _table_plane_cbf(env, p, margin):
+    def _table_plane_cbf(self,env, p, margin):
         z_top = float(env.model.mujoco_arena.table_offset[2])
         h = float(p[2]) - (z_top + margin)
         H = np.array([0.0, 0.0, 1.0], dtype=float)
@@ -53,7 +44,6 @@ class TableTopCBF(CBFModule):
         model = sim.model
         robot_joint_idx = env.robots[0].joint_indexes
 
-        # Bodies
         for body_name, params in self.robot_config["bodies"].items():
             alpha = float(params["alpha"]); margin = float(params["margin"])
             x = sim.data.body_xpos[model.body_name2id(body_name)][:3]
@@ -67,7 +57,6 @@ class TableTopCBF(CBFModule):
                 As.append(a.astype(float))
                 bs.append(float(-alpha * h))
 
-        # Geoms
         for geom_name, params in self.robot_config["geoms"].items():
             alpha = float(params["alpha"]); margin = float(params["margin"])
             x = sim.data.geom_xpos[model.geom_name2id(geom_name)][:3]
@@ -82,30 +71,60 @@ class TableTopCBF(CBFModule):
                 bs.append(float(-alpha * h))
         return As, bs
 
+"""class WristRateLimitCBF(CBFModule):
+    def __init__(self, env, omega_max=0.5):
+        self.env = env
+        self.omega_max = omega_max
 
-# -------------------------- Cube boundary (drop) CBF -------------------------
+    def constraints(self, env):
+        As, Bs = [], []
+        qvel_idx = env.robots[0].joint_indexes
+        ee_site = env.robots[0].gripper.important_sites["grip_site"]
+        Jr_site = np.reshape(env.sim.data.get_site_jacr(ee_site), (3, -1))
+        Jr = Jr_site[:, qvel_idx]
+        axes = [0, 1, 2]
+        for ax in axes:
+            row = Jr[ax, :].astype(float)
+            As.append(+row); Bs.append(-self.omega_max)
+            As.append(-row); Bs.append(-self.omega_max)
+        return As, Bs"""
+    
+
 class CubeDropCBF(CBFModule):
-    """
-    Gripper-site-only version (no contact geoms).
-    Keeps the cube on the table with a planar CBF and adds hard constraints
-    on end-effector angular velocity to avoid peel-off.
-    """
     def __init__(self, env):
         self.env = env
         self.cfg = {
             "alpha": 0.25,
-            "margin": 0.01,
+            "margin": 0.02,
             "rx": 0.020,
             "ry": 0.020,
             "e1": 0.1,
             "e2": 0.1,
             "kappa": 1e-12,
-            # wrist rotation limits
-            "omega_max": 0.2,   # rad/s
-            "limit_axes": "z",  # "z" or "all"
+            "omega_max": 0.5,
+            "limit_axes": "all",
+            "ori_hold_weight": 10.0,  # weight of the quadratic term
+            "ori_kp": 2.0,            # gain from orientation error to omega_ref
+            "ori_axes": "all",        # "z" or "all"
         }
+        self._R0 = None
 
-    # Barrier h(x,y)
+    @staticmethod
+    def _mat_from_site(sim, site_name):
+        xmat = np.array(sim.data.get_site_xmat(site_name), dtype=float).reshape(3, 3)
+        return xmat
+
+    @staticmethod
+    def _so3_log(R):
+        tr = np.clip((np.trace(R) - 1.0) / 2.0, -1.0, 1.0)
+        theta = np.arccos(tr)
+        if theta < 1e-6:
+            return np.zeros(3)
+        w_hat = (R - R.T) / (2.0 * np.sin(theta))
+        return theta * np.array([w_hat[2,1] - 0*w_hat[1,2],
+                                 w_hat[0,2] - 0*w_hat[2,0],
+                                 w_hat[1,0] - 0*w_hat[0,1]])
+
     def bf(self):
         cfg = self.cfg
         cx, cy = 0.0, 0.0
@@ -135,53 +154,106 @@ class CubeDropCBF(CBFModule):
         H_xy = np.array([dh_dxc, dh_dyc], dtype=float)  # (2,)
         return float(h), H_xy
 
-    # CBF row using gripper site only
+    def _skew(self, v):
+        vx, vy, vz = float(v[0]), float(v[1]), float(v[2])
+        return np.array([[ 0.0, -vz,  vy],
+                        [ vz,  0.0, -vx],
+                        [-vy,  vx,  0.0]], dtype=float)
+
     def _cube_drop_row_gripper_site(self):
         h, H_xy = self.bf()
         sim = self.env.sim
         qvel_idx = self.env.robots[0].joint_indexes
-
         ee_site = self.env.robots[0].gripper.important_sites["grip_site"]
 
-        # site Jacobians (world frame)
         jacp = np.reshape(sim.data.get_site_jacp(ee_site), (3, -1))
         jacr = np.reshape(sim.data.get_site_jacr(ee_site), (3, -1))
+        J_full = np.vstack((jacp, jacr))
+        Jp = J_full[:3, qvel_idx]                                  
+        Jr = J_full[3:, qvel_idx]                                  
 
-        # positional block for robot joints, planar slice
-        J_full = np.vstack((jacp, jacr))           # (6 x nv)
-        J_robot_pos = J_full[:3, qvel_idx]         # (3 x n)
-        J_xy = J_robot_pos[:2, :]                  # (2 x n)
+        p_site = np.array(sim.data.get_site_xpos(ee_site), dtype=float).reshape(3)
 
-        # CBF row: dot(h) = H_xy^T [v_x; v_y] ≈ H_xy^T J_xy qdot ≥ -α h
-        a = (H_xy.reshape(1, 2) @ J_xy).ravel()
+        contact_points = []
+        dists_to_site = []
+
+        def is_gripper(name): return ("gripper" in name) or ("robot0" in name and "finger" in name)
+        def is_cube(name): return ("cube" in name)
+
+        for i in range(sim.data.ncon):
+            c = sim.data.contact[i]
+            g1 = sim.model.geom_id2name(c.geom1)
+            g2 = sim.model.geom_id2name(c.geom2)
+            # Only consider gripper–cube pairs
+            if (is_cube(g1) and is_gripper(g2)) or (is_cube(g2) and is_gripper(g1)):
+                p_c = np.array(c.pos, dtype=float).reshape(3)  # world-frame contact position
+                contact_points.append(p_c)
+                dists_to_site.append(np.linalg.norm(p_c - p_site))
+
+        if len(contact_points) > 0:
+            idx = int(np.argmin(dists_to_site))
+            p_contact = contact_points[idx]
+        else:
+            p_contact = p_site
+
+        r_world = (p_contact - p_site).reshape(3)
+        S_r = self._skew(r_world)
+
+        J_eff = Jp - S_r @ Jr
+        J_eff_xy = J_eff[:2, :]
+
+        a = (H_xy.reshape(1, 2) @ J_eff_xy).ravel()
         b = -float(self.cfg["alpha"]) * float(h)
         return a.astype(float), float(b)
 
-    # Hard bounds on EEF angular velocity at the gripper site
     def _wrist_rotation_limit_rows(self):
-        """
-        Encode |omega_axis| <= omega_max as A u >= b with:
-            (+row) @ qdot >= -omega_max
-            (-row) @ qdot >= -omega_max
-        """
         sim = self.env.sim
         qvel_idx = self.env.robots[0].joint_indexes
         omega_max = float(self.cfg.get("omega_max", 0.2))
-        limit_axes = self.cfg.get("limit_axes", "z")  # "z" or "all"
+        limit_axes = self.cfg.get("limit_axes", "z")
 
         ee_site = self.env.robots[0].gripper.important_sites["grip_site"]
         Jr_site = np.reshape(sim.data.get_site_jacr(ee_site), (3, -1))
-        Jr = Jr_site[:, qvel_idx]  # (3 x n)
+        Jr = Jr_site[:, qvel_idx]
 
         axes = [2] if limit_axes == "z" else [0, 1, 2]
         As, Bs = [], []
         for ax in axes:
-            row = Jr[ax, :].astype(float)  # omega_ax = row @ qdot
-            As.append(+row)               # +row @ qdot >= -omega_max
+            row = Jr[ax, :].astype(float)
+            As.append(+row)
             Bs.append(-omega_max)
-            As.append(-row)               # -row @ qdot >= -omega_max (i.e., row @ qdot <= +omega_max)
+            As.append(-row)
             Bs.append(-omega_max)
         return As, Bs
+
+    def objective_terms(self, env):
+        sim = self.env.sim
+        qvel_idx = self.env.robots[0].joint_indexes
+        ee_site = self.env.robots[0].gripper.important_sites["grip_site"]
+
+        if self._R0 is None:
+            self._R0 = self._mat_from_site(sim, ee_site)
+
+        R = self._mat_from_site(sim, ee_site)
+        R0 = self._R0
+        e_rot = self._so3_log(R0.T @ R)
+
+        kp = float(self.cfg.get("ori_kp", 2.0))
+        omega_ref_full = -kp * e_rot
+
+        axes = [2] if self.cfg.get("ori_axes", "z") == "z" else [0, 1, 2]
+        W_diag = np.zeros(3)
+        for ax in axes:
+            W_diag[ax] = float(self.cfg.get("ori_hold_weight", 10.0))
+
+        Jr_site = np.reshape(sim.data.get_site_jacr(ee_site), (3, -1))
+        Jr = Jr_site[:, qvel_idx]
+
+        W2 = np.diag(W_diag**2)
+        P_extra = Jr.T @ W2 @ Jr
+        q_extra = -(Jr.T @ (W2 @ omega_ref_full))
+
+        return P_extra, q_extra
 
     def constraints(self, env):
         self.env = env
@@ -197,22 +269,17 @@ class CubeDropCBF(CBFModule):
         return As, Bs
 
 
-# ------------------------------- QP filter -----------------------------------
 class CollisionQPFilter:
     def __init__(self, env, cbf_modules):
         self.env = env
         self.modules = cbf_modules
 
     @staticmethod
-    def _solve_qp(u_des, a_list, b_list, *, drop_tol=1e-10, normalize_rows=True):
-        """
-        Solve:  minimize 0.5||u - u_des||^2  s.t.  A u >= b
-        Always returns (u, y, ok). y has length m (kept rows).
-        """
+    def _solve_qp(u_des, a_list, b_list, P_extra=None, q_extra=None,
+                  *, drop_tol=1e-10, normalize_rows=True):
         u_des = np.asarray(u_des, dtype=float).reshape(-1)
         n = u_des.size
 
-        # ---- sanitize constraints ----
         A_clean, b_clean = [], []
         for a, b in zip(a_list, b_list):
             a = np.asarray(a, dtype=float).reshape(n)
@@ -221,7 +288,6 @@ class CollisionQPFilter:
                 continue
             norm = np.linalg.norm(a)
             if norm < drop_tol:
-                # near-zero row: drop (redundant if b<=0; infeasible if b>0 — drop anyway)
                 continue
             if normalize_rows:
                 a = a / norm
@@ -230,22 +296,31 @@ class CollisionQPFilter:
             b_clean.append(b)
 
         m = len(A_clean)
+        P = sp.eye(n, format="csc")
+        q = -u_des.copy()
+
+        if P_extra is not None and q_extra is not None:
+            P = (P + sp.csc_matrix(P_extra)) if not isinstance(P_extra, sp.csc_matrix) else (P + P_extra)
+            q = (q + q_extra)
+
         if m == 0:
-            # No constraints -> nominal, zero duals
-            return u_des, np.zeros(0, dtype=float), True
+            if P_extra is None:
+                u = u_des
+            else:
+                M = (sp.eye(n, format="csc") + sp.csc_matrix(P_extra)).tocsc()
+                rhs = u_des - q_extra
+                u = np.linalg.solve(M.toarray(), rhs)
+            return u, np.zeros(0, dtype=float), True
 
-        A_mat = np.stack(A_clean, axis=0)                  # (m, n)
-        b_arr = np.array(b_clean, dtype=float)             # (m,)
+        A_mat = np.stack(A_clean, axis=0)                  
+        b_arr = np.array(b_clean, dtype=float)             
 
-        # OSQP data for A u >= b  ↔  l=b, u=+inf
         Au = sp.csc_matrix(A_mat)
         l = b_arr
-        u = np.full(m, np.inf, dtype=float)
-        P = sp.eye(n, format="csc")
-        q = -u_des
+        uvec = np.full(m, np.inf, dtype=float)
 
         prob = osqp.OSQP()
-        prob.setup(P=P, q=q, A=Au, l=l, u=u,
+        prob.setup(P=P, q=q, A=Au, l=l, u=uvec,
                    verbose=False, polish=False, eps_abs=1e-6, eps_rel=1e-6)
         res = prob.solve()
 
@@ -258,12 +333,6 @@ class CollisionQPFilter:
         return x, y, True
 
     def apply(self, u_des):
-        """
-        u_des: full action vector; first 7 entries are robot joint velocities
-        Returns:
-            u_act: safe action (same shape as u_des)
-            efforts: dict with per-module effort diagnostics (optional)
-        """
         u_act = np.array(u_des, dtype=float).copy()
         u_nom = u_act[:7]
 
@@ -280,14 +349,21 @@ class CollisionQPFilter:
                 groups.append((mod.__class__.__name__, row_start, row_start + k))
                 row_start += k
 
-        # No constraints → keep nominal
-        if len(all_As) == 0:
-            return u_act, {"qp_skipped": True}
+        P_extra_total = None
+        q_extra_total = None
+        for mod in self.modules:
+            if hasattr(mod, "objective_terms"):
+                obj = mod.objective_terms(self.env)
+                if obj is not None:
+                    P_e, q_e = obj
+                    P_extra_total = (P_e if P_extra_total is None else P_extra_total + P_e)
+                    q_extra_total = (q_e if q_extra_total is None else q_extra_total + q_e)
 
-        u_safe, y, ok = self._solve_qp(u_nom, all_As, all_Bs)
+        u_safe, y, ok = self._solve_qp(u_nom, all_As, all_Bs,
+                                       P_extra=P_extra_total, q_extra=q_extra_total)
+
         u_act[:7] = u_safe if ok else u_nom
 
-        # Optional diagnostics
         efforts = {}
         if len(all_As) > 0:
             A_mat = np.stack([np.asarray(ai, dtype=float).reshape(-1) for ai in all_As], axis=0)
