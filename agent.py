@@ -2,9 +2,8 @@ import math
 import utils
 import numpy as np
 from metrics import RolloutMetrics
-from table_collision import TableTopCBF
-from table_collision import CubeDropCBF
-from table_collision import CollisionQPFilter
+from filter import TableTopCBF, CubeDropCBF, WristRotationCBF, CollisionQPFilter
+
 
 class Agent():
     def __init__(self, env):
@@ -13,9 +12,8 @@ class Agent():
         self.output_size = self.env.action_dim
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
-        table_collision_filter = TableTopCBF(self.env)
-        cube_drop_filter = CubeDropCBF(self.env)
-        self.safe_filter = CollisionQPFilter(self.env, [table_collision_filter, cube_drop_filter])
+        self.cbf_modules = [TableTopCBF(self.env), CubeDropCBF(self.env), WristRotationCBF(self.env)]
+        self.safe_filter = CollisionQPFilter(env, self.cbf_modules)
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -50,7 +48,7 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action, efforts = self.safe_filter.apply(action.copy())
+            action, efforts = self.safe_filter.apply(action.copy(), self.env)
             #print(efforts)
             eff1 = efforts["TableTopCBF"]["effort_l2"]
 

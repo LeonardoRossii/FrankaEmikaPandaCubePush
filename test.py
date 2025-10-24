@@ -2,7 +2,6 @@ import os
 import numpy as np
 import utils
 from agent import Agent
-from filters import FilterCBF
 import robosuite as suite
 from env import Push
 from pathlib import Path
@@ -20,14 +19,13 @@ env_ = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=True,
     use_camera_obs=True,
-    render_camera="frontview",      
+    render_camera="sideview",      
     control_freq=25,
     horizon = 250
 )
 
 _ = env_.reset()
 agent = Agent(env_)
-safe_filter = FilterCBF(env_)
 llm = GPT(client)
 weights = np.loadtxt(Path("weights") / "weights_drop.txt")
 _,_,_,_ = agent.evaluate(weights, env_.horizon, [0], render=True, plot=True)
