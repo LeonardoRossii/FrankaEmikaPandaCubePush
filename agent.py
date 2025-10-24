@@ -2,7 +2,7 @@ import math
 import utils
 import numpy as np
 from metrics import RolloutMetrics
-from filter import TableTopCBF, CubeDropCBF, WristRotationCBF, CollisionQPFilter
+from filter import TableTopCBF, CubeDropCBF, WristRotationCBF, QPFilter
 
 
 class Agent():
@@ -12,8 +12,8 @@ class Agent():
         self.output_size = self.env.action_dim
         self.A = np.zeros((self.output_size, self.input_size))
         self.b = np.zeros(self.output_size)
-        self.cbf_modules = [TableTopCBF(self.env), CubeDropCBF(self.env), WristRotationCBF(self.env)]
-        self.safe_filter = CollisionQPFilter(env, self.cbf_modules)
+        self.cbf_modules = [TableTopCBF(self.env), CubeDropCBF(self.env)]
+        self.safe_filter = QPFilter(env, self.cbf_modules)
 
     def get_state(self, obs):
         eef_to_cube = obs["eef_to_cube"]
@@ -48,15 +48,14 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action, efforts = self.safe_filter.apply(action.copy(), self.env)
-            #print(efforts)
-            eff1 = efforts["TableTopCBF"]["effort_l2"]
+            #action, efforts = self.safe_filter.apply(action.copy(), self.env)
+            """eff1 = efforts["TableTopCBF"]["effort_l2"]
 
             eff2 = efforts["CubeDropCBF"]["effort_l2"]
             rtcasf.append(eff1)
             cdtasf.append(eff2)
             self.env.set_robot_table_collision_avoidance_safety_filter_effort(eff1)
-            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(eff2)
+            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(eff2)"""
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
