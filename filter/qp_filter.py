@@ -51,7 +51,7 @@ class QPFilter:
         m = len(A)
 
         # Problem: Minimize ||u - u_des||² 
-        # In OSQP: Minimize (1/2)*uᵀPu + (-u_des)ᵀu + constant
+        # Minimize (1/2)*uᵀPu + (-u_des)ᵀu + constant
         # With P = I
         P = sp.eye(n, format="csc")
         q = -u_des.copy()

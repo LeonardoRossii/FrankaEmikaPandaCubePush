@@ -39,7 +39,7 @@ class Agent():
         drop = False
         frames = []
         tracker = RolloutMetrics(log_every=10)
-        fixed_action = np.array([0.0,0,0.0,0.0,0.0,0.0,0,0])
+        fixed_action = np.array([0,0.1,0.2,-0.0,0.2,-0.1,-0.2,1])
         ct = False
         rtcasf = []
         cdtasf = []
@@ -47,9 +47,10 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            action, efforts = self.safe_filter.apply(action.copy(), self.env)
+            action = fixed_action
+            """action, efforts = self.safe_filter.apply(action.copy(), self.env)
             self.env.set_robot_table_collision_avoidance_safety_filter_effort(efforts["TableTopCBF"]["effort"])
-            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(efforts["CubeDropCBF"]["effort"])
+            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(efforts["CubeDropCBF"]["effort"])"""
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
@@ -57,6 +58,7 @@ class Agent():
             if(not ct and self.env.check_contact_table()):
                 ct = True
 
+            print("Robot touch the table: ", ct)
             tracker.log_step(t=t, obs=obs)
 
             if render:
@@ -67,7 +69,7 @@ class Agent():
             for i in range(len(rewards)):
                 episode_returns[i] += float(rewards[i]) * math.pow(gamma, t)
 
-            if done or self.env.check_success() or self.env.check_failure():              
+            if done or self.env.check_success():              
                 accomplished = bool(self.env.check_success())
                 metrics = tracker.to_dict(accomplished)
                 break

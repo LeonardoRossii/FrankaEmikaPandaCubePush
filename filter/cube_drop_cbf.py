@@ -1,7 +1,6 @@
 import numpy as np
 from .cbf_base import CBFModule
 
-
 class CubeDropCBF(CBFModule):
     def __init__(self, env):
         self.env = env
