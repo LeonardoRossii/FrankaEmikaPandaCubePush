@@ -4,7 +4,6 @@ import numpy as np
 from metrics import RolloutMetrics
 from filter import TableTopCBF, CubeDropCBF, WristRotationCBF, QPFilter
 
-
 class Agent():
     def __init__(self, env):
         self.env = env
@@ -48,14 +47,9 @@ class Agent():
         for t in range(max_n_timesteps):
             state = self.get_state(obs)
             action = self.forward(state)
-            #action, efforts = self.safe_filter.apply(action.copy(), self.env)
-            """eff1 = efforts["TableTopCBF"]["effort_l2"]
-
-            eff2 = efforts["CubeDropCBF"]["effort_l2"]
-            rtcasf.append(eff1)
-            cdtasf.append(eff2)
-            self.env.set_robot_table_collision_avoidance_safety_filter_effort(eff1)
-            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(eff2)"""
+            action, efforts = self.safe_filter.apply(action.copy(), self.env)
+            self.env.set_robot_table_collision_avoidance_safety_filter_effort(efforts["TableTopCBF"]["effort"])
+            self.env.set_cube_drop_off_table_avoidance_safety_filter_effort(efforts["CubeDropCBF"]["effort"])
             obs, rewards, done, _, = self.env.step(action, lambdas)
             if obs["cube_drop"]:
                 drop = True
@@ -81,20 +75,6 @@ class Agent():
                 self.env.render()
         if render:
             utils.save_video(frames, f"video{video_i}.mp4", fps=20)
-
         self.env.close()
-
-        if plot:
-            import matplotlib.pyplot as plt
-            plt.figure(figsize=(10, 5))
-            plt.plot(rtcasf, label="TableTopCBF Effort (rtcasf)")
-            plt.plot(cdtasf, label="CubeDropCBF Effort (cdtasf)")
-            plt.xlabel("Timestep")
-            plt.ylabel("Safety Filter Effort (L2 Norm)")
-            plt.title("Safety Filter Efforts over Time")
-            plt.legend()
-            plt.grid(True)
-            plt.tight_layout()
-            plt.show()
 
         return episode_returns, metrics, drop, ct

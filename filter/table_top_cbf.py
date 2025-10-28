@@ -27,6 +27,10 @@ class TableTopCBF(CBFModule):
                 "robot0_link5_collision": {"alpha": 1.0, "margin": 0.05},
                 "robot0_link4_collision": {"alpha": 1.0, "margin": 0.05},
                 "robot0_link3_collision": {"alpha": 1.0, "margin": 0.05},
+            },
+            "sites":{
+                "gripper0_mount_left_site": {"alpha": 2.0, "margin": 0.05},
+                "gripper0_mount_right_site": {"alpha": 2.0, "margin": 0.05},
             }
         }
 
@@ -102,5 +106,19 @@ class TableTopCBF(CBFModule):
             a = (H @ J_robot_pos).ravel()
             As.append(a.astype(float))
             bs.append(float(-alpha * h))
+
+        for site_name, params in self.robot_config["sites"].items():
+            alpha = float(params["alpha"])
+            margin = float(params["margin"])
+            x = sim.data.site_xpos[model.site_name2id(site_name)][:3]
+            h, H = self._table_plane_cbf(env, x, margin)
+            jacp = np.reshape(sim.data.get_site_jacp(site_name), (3, -1))
+            jacr = np.reshape(sim.data.get_site_jacr(site_name), (3, -1))
+            J_full = np.vstack((jacp, jacr))
+            J_robot_pos = J_full[:3, robot_joint_idx]
+            a = (H @ J_robot_pos).ravel()
+            As.append(a.astype(float))
+            bs.append(float(-alpha * h))
+
 
         return As, bs

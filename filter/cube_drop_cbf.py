@@ -96,6 +96,7 @@ class CubeDropCBF(CBFModule):
             contact_points[int(np.argmin(dists_to_site))]
             if contact_points else p_site
         )
+        #p_contact = self.env.sim.data.body_xpos[self.env.cube_body_id]
 
         # Shift linear Jacobian to contact:
         # J_eff = Jp - [r]× Jr

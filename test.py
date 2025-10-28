@@ -19,7 +19,7 @@ env_ = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=True,
     use_camera_obs=True,
-    render_camera="frontview",      
+    render_camera="sideview",      
     control_freq=25,
     horizon = 250
 )

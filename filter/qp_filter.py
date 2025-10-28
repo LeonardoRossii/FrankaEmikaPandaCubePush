@@ -98,7 +98,6 @@ class QPFilter:
         y = np.array(res.y, dtype=float) if res.y is not None else np.zeros(m, dtype=float)
         return x, y, True
 
-
     def apply(self, u_des, env):
         self.env = env
 
@@ -120,7 +119,6 @@ class QPFilter:
             # Get number of constraints by this mod
             k = len(a_list) 
             if k:
-
                 # Append to the global constraints set
                 all_As.extend(a_list)
                 all_Bs.extend(b_list)
@@ -152,7 +150,7 @@ class QPFilter:
             q_extra_total = q_e if q_extra_total is None else q_extra_total + q_e
 
         # Solve full safety-filtered QP
-        u_safe, y, ok = self._solve_qp(u_nom, all_As, all_Bs,
+        u_safe, _, ok = self._solve_qp(u_nom, all_As, all_Bs,
                                        P_extra=P_extra_total,
                                        q_extra=q_extra_total)
 
@@ -163,14 +161,6 @@ class QPFilter:
         # Contributions per CBF module
         efforts = {}
         if len(all_As) > 0:
-            A_mat = np.stack([np.asarray(ai, dtype=float).reshape(-1) for ai in all_As], axis=0)
-            for name, lo, hi in groups:
-                A_g = A_mat[lo:hi, :]
-                y_g = y[lo:hi] if y.size >= hi else np.zeros(hi - lo, dtype=float)
-                delta_g = -A_g.T @ y_g
-                efforts[name] = {
-                    "delta": delta_g,
-                    "effort_l2": float(np.linalg.norm(delta_g)),
-                    "active_constraints": int(np.count_nonzero(y_g)),
-                }
+            for name, _, _ in groups:
+                efforts[name] = {"effort": 0.0}
         return u_act, efforts

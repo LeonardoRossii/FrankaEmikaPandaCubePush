@@ -23,7 +23,7 @@ class CEM:
         pop_min: int = 8,
         elite_min: int = 2,
         n_lambdas = 3,
-        init_lambda = 0.3,
+        init_lambda = 0.5,
         drop = 0,
     ):
         self.agent = agent
