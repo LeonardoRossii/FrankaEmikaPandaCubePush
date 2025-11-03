@@ -54,9 +54,9 @@ class CEM:
         self.drop = drop
         
     def init(self):
-        """self.llm.generate_irreversible_events()
+        self.llm.generate_irreversible_events()
         if self.grf: self.llm.generate_reward()
-        self.llm.generate_preference_setup()"""
+        self.llm.generate_preference_setup()
         self._lambda = self.init_lambda
         self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()
