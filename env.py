@@ -40,6 +40,8 @@ class Push(SingleArmEnv):
         camera_segmentations=None, 
         renderer="mujoco",
         renderer_config=None,
+        persist_object_state = False,
+        seed = 42,
     ):
         self.table_full_size = table_full_size
         self.table_friction = table_friction
@@ -47,12 +49,22 @@ class Push(SingleArmEnv):
         self.reward_shaping = reward_shaping
         self.use_object_obs = use_object_obs
         self.placement_initializer = placement_initializer
+        self.seed = seed
         
         self.robot_table_collision_avoidance_safety_filter_effort = 0.0
         self.cube_drop_off_table_avoidance_safety_filter_effort = 0.0
 
         self.table_offset = np.array((0, 0, 0.95))
         self.goal_pos_offset = np.array([0.2, 0])
+
+        self.persist_object_state = persist_object_state
+        self.saved_cube_qpos = None
+
+        self.cube_x_pos_range = [-0.0, 0.0]
+        self.cube_y_pos_range = [-0.02, 0.02]
+        self.x_cube_default_pos = np.random.uniform(self.cube_x_pos_range)
+        self.y_cube_default_pos = np.random.uniform(self.cube_y_pos_range)
+        
 
         super().__init__(
             robots=robots,
@@ -184,11 +196,11 @@ class Push(SingleArmEnv):
             self.placement_initializer = UniformRandomSampler(
                 name="ObjectSampler",
                 mujoco_objects=self.cube,
-                x_range=[-0.00, 0.00],
-                y_range=[-0.00, 0.00],
+                x_range = self.cube_x_pos_range,
+                y_range = self.cube_y_pos_range,
                 rotation=0,
                 ensure_object_boundary_in_range=False,
-                ensure_valid_placement=False,
+                ensure_valid_placement=True,
                 reference_pos=self.table_offset,
                 z_offset=0.01,
             )
@@ -212,7 +224,23 @@ class Push(SingleArmEnv):
             @sensor(modality=modality)
             def cube_pos(obs_cache):
                 return np.array(self.sim.data.body_xpos[self.cube_body_id])
-
+            
+            @sensor(modality=modality)
+            def cube_ori(obs_cache):
+                return np.array(self.sim.data.body_xquat[self.cube_body_id])
+            
+            @sensor(modality=modality)
+            def eef_ori(obs_cache):
+                if f"{pf}eef_quat" in obs_cache:
+                    return obs_cache[f"{pf}eef_quat"]
+                return 0
+            
+            @sensor(modality= modality)
+            def eef_pos(obs_cache):
+                if f"{pf}eef_pos" in obs_cache:
+                    return obs_cache[f"{pf}eef_pos"]
+                return 0
+        
             @sensor(modality=modality)
             def goal_pos(obs_cache):
                 table_z = self.model.mujoco_arena.table_offset[2]
@@ -249,19 +277,22 @@ class Push(SingleArmEnv):
             def cube_drop(obs_cache):
                 if "cube_pos" in obs_cache:
 
-                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < -0.025
+                    return obs_cache["cube_pos"][2] -  self.model.mujoco_arena.table_offset[2] < -0.05
 
             @sensor(modality=modality)
             def cube_quat(obs_cache):
                 return self.sim.data.body_xquat[self.cube_body_id].copy()
 
             sensors = [cube_pos,
+                       eef_pos,
                        goal_pos,
+                       cube_ori,
                        cube_to_bound_dist,
                        cube_drop,
                        eef_to_cube,
                        cube_to_goal,
                        eef_to_goal,
+                       eef_ori,
                        cube_quat]
             
             names = [s.__name__ for s in sensors]
@@ -276,10 +307,15 @@ class Push(SingleArmEnv):
 
     def _reset_internal(self):
         super()._reset_internal()
-        if not self.deterministic_reset:
-            placements = self.placement_initializer.sample()
-            for obj_pos, obj_quat, obj in placements.values():
-                self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
+
+        if self.persist_object_state and (self.saved_cube_qpos is not None):
+            self.sim.data.set_joint_qpos(self.cube.joints[0], self.saved_cube_qpos.copy())
+ 
+        else:
+            if not self.deterministic_reset:
+                placements = self.placement_initializer.sample()
+                for obj_pos, obj_quat, obj in placements.values():
+                    self.sim.data.set_joint_qpos(obj.joints[0], np.concatenate([np.array(obj_pos), np.array(obj_quat)]))
 
         cube_xy = self.sim.data.body_xpos[self.cube_body_id][:2].copy()
         self.goal_xy =  cube_xy + self.goal_pos_offset

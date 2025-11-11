@@ -9,11 +9,11 @@ class CEM:
         agent,
         llm,
         reward_gen: bool = False,
-        n_its: int = 30,
+        n_its: int = 15,
         n_steps: int = 250,
         randoms: int = 1,
         gamma: float = 0.99,
-        pop_size: int = 40,
+        pop_size: int = 50,
         elite_frac: float = 0.2,
         top_frac: float = 0.2,
         sigma: float = 0.5,
@@ -54,9 +54,9 @@ class CEM:
         self.drop = drop
         
     def init(self):
-        self.llm.generate_irreversible_events()
+        """self.llm.generate_irreversible_events()
         if self.grf: self.llm.generate_reward()
-        self.llm.generate_preference_setup()
+        self.llm.generate_preference_setup()"""
         self._lambda = self.init_lambda
         self.lambdas = utils.sample_params(self._lambda , self.n_lambdas)
         self.weight_dim = self.agent.get_weights_dim()
@@ -90,7 +90,7 @@ class CEM:
         best_returns = [-np.inf] * self.n_lambdas
         best_weights = np.stack([np.zeros(self.weight_dim).copy() for _ in range(self.n_lambdas)])
         for i, weight in enumerate(weights_pop):
-            returns,_, drop, ct= self.agent.evaluate(weight, self.n_steps, self.lambdas)
+            returns,_, drop, ct= self.agent.evaluate(weight, self.n_steps, self.lambdas, video_i = i)
             if drop:
                 self.save_drop(weight)
                 self.drop += 1

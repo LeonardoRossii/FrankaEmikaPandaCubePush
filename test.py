@@ -19,7 +19,7 @@ env_ = suite.make(
     has_renderer=True,             
     has_offscreen_renderer=True,
     use_camera_obs=True,
-    render_camera="sideview",      
+    render_camera="frontview",      
     control_freq=25,
     horizon = 250
 )
@@ -27,7 +27,7 @@ env_ = suite.make(
 _ = env_.reset()
 agent = Agent(env_)
 llm = GPT(client)
-weights = np.loadtxt(Path("weights") / "weights_drop.txt")
-_,_,_,_ = agent.evaluate(weights, env_.horizon, [0], render=True, plot=True)
+weights = np.loadtxt(Path("weights") / "weights.txt")
+_,_,_,_ = agent.evaluate(weights, env_.horizon, [0], plot=True, render=True, save_video = True, video_i=1)
 env_.close()
 

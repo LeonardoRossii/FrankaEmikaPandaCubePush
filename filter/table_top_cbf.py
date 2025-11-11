@@ -12,9 +12,9 @@ class TableTopCBF(CBFModule):
         self.cz = float(self.env.model.mujoco_arena.table_offset[2])
         self.robot_config = {
             "bodies": {
-                "gripper0_eef":        {"alpha": 2.0, "margin": 0.01},
-                "gripper0_leftfinger": {"alpha": 2.0, "margin": 0.01},
-                "gripper0_rightfinger":{"alpha": 2.0, "margin": 0.01},
+                "gripper0_eef":        {"alpha": 10.0, "margin": 0.01},
+                "gripper0_leftfinger": {"alpha": 10.0, "margin": 0.01},
+                "gripper0_rightfinger":{"alpha": 10.0, "margin": 0.01},
                 "robot0_link7":        {"alpha": 1.0, "margin": 0.05},
                 "robot0_link6":        {"alpha": 1.0, "margin": 0.05},
                 "robot0_link5":        {"alpha": 1.0, "margin": 0.05},
@@ -119,6 +119,4 @@ class TableTopCBF(CBFModule):
             a = (H @ J_robot_pos).ravel()
             As.append(a.astype(float))
             bs.append(float(-alpha * h))
-
-
         return As, bs

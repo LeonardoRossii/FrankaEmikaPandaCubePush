@@ -16,13 +16,14 @@ env = suite.make(
     "Push",
     robots="Panda",
     controller_configs=controller,
-    has_renderer=True,             
-    has_offscreen_renderer=True,
+    has_renderer=False,             
+    has_offscreen_renderer=False,
     render_collision_mesh=False,
     use_camera_obs=False,
     render_camera="frontview",      
     control_freq=25,
-    horizon = 250
+    horizon = 250,
+    seed = 1,
 )
 
 llm = GPT(client)
